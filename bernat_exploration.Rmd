@@ -1,0 +1,119 @@
+---
+title: "Helloooo"
+fig_width: 4
+fig_height: 2
+---
+
+```{r}
+library(ggplot2)
+source("Bernat/reading.R")
+```
+
+## Song Popularity
+
+This distribution looks hard to predict.
+
+```{r}
+hist(songs$song_popularity)
+```
+
+It might be smart to make it follow a known distribution. One option is to make it uniform by simply ranking it.
+
+```{r}
+popularity_unif <- rank(songs$song_popularity) / nrow(songs)
+cor(songs$song_popularity, popularity_unif)
+hist(popularity_unif)
+```
+
+## Mode
+
+Mode is one of the most important aspects in a song. It will be important on its own,
+but specially in relationship to other variables.
+
+I suspect it will have a significant interaction with tempo. In a slow song, a
+major key can mean calm and happinness, while a minor key can be profoundly tragic.
+On the other hand, in a fast song, a major key can represent excitement, in contrast
+to a minor key which can convey anger or a total and unstoppable descent into madness.
+
+```{r}
+songs |> count(audio_mode)
+songs |> 
+    select(!ID) |> 
+    select(audio_mode, where(is.numeric)) |> 
+    tidyr::pivot_longer(!audio_mode) |> 
+    ggplot(aes(x = audio_mode, y = value)) +
+    facet_wrap(~name, scales = "free") +
+    geom_boxplot()
+```
+
+Well fuck me I guess it has no visible correlation to any fucking variable. 
+Guess I'll check with the kruskall-wallis just to be sure.
+
+```{r}
+numeric_variables <- songs |> 
+    select(where(is.numeric)) |> 
+    select(!ID)
+
+pr_greater <- function(x, y, n = 50 * max(length(x), length(y))) {
+    samp_x <- sample(x, size = n, replace = TRUE)
+    samp_y <- sample(y, size = n, replace = TRUE)
+    (sum(samp_x > samp_y) + 1/2 * sum(samp_x == samp_y)) / n
+}
+
+purrr::imap(numeric_variables, function(v, name) {
+    minor <- v[songs$audio_mode == "Minor"]
+    major <- v[songs$audio_mode == "Major"]
+    minor <- minor[!is.na(minor)]
+    major <- major[!is.na(major)]
+    
+    test <- kruskal.test(v ~ songs$audio_mode)
+    tibble(variable = name, chisq = test$statistic, p = test$p.value, 
+           pr_major_greater = pr_greater(major, minor))
+}) |> 
+    bind_rows() |> 
+    mutate(p = p.adjust(p, method = "fdr")) |> 
+    mutate(p_formatted = format.pval(p, digits = 4)) |> 
+    arrange(p)
+```
+
+From this we can conclude there are significant differences between minor and major keys
+on these variables: speechiness, danceability, loudness, acousticness, and energy. However,
+the differences are very small. 
+A song in a minor key has a 58.9% chance to be "less speechy" than a song in a major key.
+A song in a major key has a 53.4% to be "more acoustic" than a song in a minor key.
+The popularity does not directly depend on the mode at all.
+
+
+## Signature
+
+Some signatures are going to be a lot less common because of the difficulty of
+playing them in different instruments, while computer music shouldn't have this
+limitation.
+
+However, because we needed both key and mode to induce the signature, it contains
+a lot of missing values, almost half the dataset.
+
+```{r}
+songs |> count(signature, sort = TRUE)
+songs$signature |> 
+    table() |> 
+    sort(decreasing = TRUE) |> 
+    barplot()
+```
+
+There's a clear cutoff between the G and A signatures. A candidate feature would be
+a split between the 4 most common signatures and the rest. I don't think this is a good idea,
+because of the problem with missing values and lack of relevance.
+
+```{r}
+common_signatures <- songs |> 
+    filter(!is.na(signature)) |> 
+    count(signature, sort = TRUE) |> 
+    head(4) |> 
+    _$signature
+
+songs$is_common_signature <- is.element(songs$signature, common_signatures)
+songs$is_common_signature[is.na(songs$signature)] <- NA
+summary(songs$is_common_signature)
+```
+
