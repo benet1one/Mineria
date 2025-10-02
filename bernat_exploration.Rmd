@@ -25,6 +25,40 @@ cor(songs$song_popularity, popularity_unif)
 hist(popularity_unif)
 ```
 
+## Signature
+
+Some signatures are going to be a lot less common because of the difficulty of
+playing them in different instruments, while computer music shouldn't have this
+limitation.
+
+However, because we needed both key and mode to induce the signature, it contains
+a lot of missing values, almost half the dataset.
+
+```{r}
+songs |> count(signature, sort = TRUE)
+songs$signature |> 
+    table() |> 
+    sort(decreasing = TRUE) |> 
+    barplot()
+```
+
+There's a clear cutoff between the G and A signatures. A candidate feature would be
+a split between the 4 most common signatures and the rest. I don't think this is a good idea,
+because of the problem with missing values and lack of relevance.
+
+```{r}
+common_signatures <- songs |> 
+    filter(!is.na(signature)) |> 
+    count(signature, sort = TRUE) |> 
+    head(4) |> 
+    _$signature
+
+songs$is_common_signature <- is.element(songs$signature, common_signatures)
+songs$is_common_signature[is.na(songs$signature)] <- NA
+summary(songs$is_common_signature)
+```
+
+
 ## Mode
 
 Mode is one of the most important aspects in a song. It will be important on its own,
@@ -84,36 +118,60 @@ A song in a major key has a 53.4% to be "more acoustic" than a song in a minor k
 The popularity does not directly depend on the mode at all.
 
 
-## Signature
-
-Some signatures are going to be a lot less common because of the difficulty of
-playing them in different instruments, while computer music shouldn't have this
-limitation.
-
-However, because we needed both key and mode to induce the signature, it contains
-a lot of missing values, almost half the dataset.
+Because these correlations are not strong, it's hard to imputate the mode from numerical
+variables. However, because of its relationship to key and signature, it is possible
+to make some great imputations using the key (but not the signature, because signature
+is calculated from key and mode).
 
 ```{r}
-songs |> count(signature, sort = TRUE)
-songs$signature |> 
-    table() |> 
-    sort(decreasing = TRUE) |> 
-    barplot()
+mode_table <- table(songs$audio_mode) |> print()
+mode_prop <- proportions(mode_table) |> round(2)
+key_mode <- table(songs$key, songs$audio_mode)
+key_mode_prop <- proportions(key_mode, margin = 1) |> round(2)
+colnames(key_mode_prop) <- paste(colnames(key_mode_prop), "Prop")
+cbind(key_mode, key_mode_prop)
 ```
 
-There's a clear cutoff between the G and A signatures. A candidate feature would be
-a split between the 4 most common signatures and the rest. I don't think this is a good idea,
-because of the problem with missing values and lack of relevance.
+While some are very similar, keys like C, D, and G show significant differences. Instead
+of imputating, we can createe a `prob_major` variable, representing the probability that the song is in a major modality. It will be 1.0 for known major values, 0.0 for known minor values and, for missing values, the last column of the previous table. For songs with unknown key, we can use the total marginal probability, $\Pr(\text{Major}) \approx 0.62$.
 
 ```{r}
-common_signatures <- songs |> 
-    filter(!is.na(signature)) |> 
-    count(signature, sort = TRUE) |> 
-    head(4) |> 
-    _$signature
+songs$prob_major <- as.numeric(songs$audio_mode == "Major")
+songs_imputate_mode <- songs |> 
+    filter(is.na(audio_mode), !is.na(key)) |> 
+    mutate(prob_major = key_mode_prop[key, "Major Prop"])
 
-songs$is_common_signature <- is.element(songs$signature, common_signatures)
-songs$is_common_signature[is.na(songs$signature)] <- NA
-summary(songs$is_common_signature)
+songs <- rows_update(songs, songs_imputate_mode, by = "ID")
+songs$prob_major[is.na(songs$prob_major)] <- mode_prop["Major"]
+
+songs |> select(ID, key, audio_mode, prob_major) |> print()
 ```
+
+
+We can later use this variable as a binary one. For example, take this linear model, where $t$ represents tempo and $m$ represents modality:
+
+$$
+y = \beta_t \cdot t + \beta_m \cdot m + \beta_{tm} \cdot t \cdot m
+$$
+
+For songs in a minor mode $(m=0)$, the model will be:
+
+$$
+y = \beta_t ·t
+$$
+And for songs in a major mode $(m=1)$, the model will be:
+
+$$
+y = \beta_t \cdot t + \beta_m + \beta_{tm} \cdot t
+$$
+
+For songs where we're not sure about the mode, $m$ represents the probability of the song being in a major key, so the model will automatically weight the previews two equations according to this probability, as proven here:
+
+$$
+\begin{align}
+y &= (1-m) \cdot (\beta_t ·t) + m \cdot (\beta_t \cdot t + \beta_m + \beta_{tm} \cdot t) \\
+  &= \beta_t \cdot t - m \cdot \beta_t \cdot t + m \cdot \beta_t \cdot t + m \cdot \beta_m + m \cdot \beta_{tm} \cdot t \\
+  &= \beta_t \cdot t + \beta_m \cdot m + \beta_{tm} \cdot t \cdot m
+\end{align}
+$$
 
