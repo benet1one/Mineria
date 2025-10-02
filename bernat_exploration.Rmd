@@ -9,6 +9,28 @@ library(ggplot2)
 source("Bernat/reading.R")
 ```
 
+# Data Quality
+
+## Duplicated Rows
+
+There are 6 duplicated rows. With this amount of variables, it's very likely that this is a mistake. Such a small number of rows won't have an effect on the model, but it might mess up the outlier finding algorithm. I suggest removing these rows.
+
+```{r}
+songs_not_duplicated <- songs |> distinct(pick(!ID), .keep_all = TRUE)
+nrow(songs)
+nrow(songs_not_duplicated)
+songs <- songs_not_duplicated
+```
+## Missing Values
+
+We can assume missing values to be completely random, because we were told that's how they were generated. Little's test confirms this.
+
+```{r}
+naniar::mcar_test(songs)
+```
+
+# Entendimiento del Negocio
+
 ## Song Popularity
 
 This distribution looks hard to predict.
