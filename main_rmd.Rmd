@@ -161,6 +161,8 @@ Example: 0.00686
 The popularity of a track is a value between 0 and 100, with 100 being the most popular.
 Example: 69
 
+
+\newpage
 ### Absolute variables
 
 · **ID**: A count, from 1 to 13186 ***Not spotify ID***
@@ -178,7 +180,6 @@ Example: 237040
 In musical terminology, tempo is the speed or pace of a given piece and derives directly from the average beat duration.
 Example: 118.211
 
-\newpage
 
 ## The data
 
@@ -189,7 +190,5 @@ In this section we show a summary of our data
 setwd("C:/Users/Sobretaula/Documents/GitHub/Mineria")
 songs<-read.csv("data/train.csv")
 summary(songs)
-
-```
 
 ```
