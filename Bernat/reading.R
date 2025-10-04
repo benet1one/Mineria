@@ -52,4 +52,4 @@ songs$time_signature <- factor(songs$time_signature, levels = 3:5)
 songs |> filter(signature == "F") |> count(key, audio_mode)
 songs |> filter(signature == "C") |> count(key, audio_mode)
 
-rm(KEY_NOTES)
+rm(KEY_NOTES, major_relative)
