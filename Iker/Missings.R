@@ -32,5 +32,15 @@ scatterplots (acatterplots with groups), labeled scatterplot (scatterplot with l
 
 ### Real start of missings values ###
 
+"First of all we want to see the quality of our instances"
+songs_modified <- songs %>% 
+  mutate(missing_quantity = rowSums(is.na(select(., -c("signature", "is_common_signature", "song_duration")))))
+
+summary(songs_modified$missing_quantity)
+
+"We can observe diferent quality of the instances. We can observe instances with 13 missings of a total of 18 attributes 
+(not including ID). In reality there are missings in attributes that are not rellevant like signature, common_signature
+and song_duration. Even so, there are 10 missings attributes of a total of 15 attributes in some instaces. We need to 
+study if this instances are a problem by her high missing ratio."
 
 
