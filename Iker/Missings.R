@@ -1,5 +1,7 @@
-library(dplyr, warn.conflicts = FALSE)
+
 library(tidyverse)
+source("reading.R")
+
 " EXecute after reading.R code"
 "(idea for other part) Data integration is not rellevant in this project since there is only a single data source."
 
@@ -34,7 +36,7 @@ scatterplots (acatterplots with groups), labeled scatterplot (scatterplot with l
 
 "First of all we want to see the quality of our instances"
 songs_modified <- songs %>% 
-  mutate(missing_quantity = rowSums(is.na(select(., -c("signature", "is_common_signature", "song_duration")))))
+  mutate(missing_quantity = rowSums(is.na(.)))
 
 summary(songs_modified$missing_quantity)
 
