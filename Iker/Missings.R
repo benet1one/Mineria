@@ -46,3 +46,25 @@ and song_duration. Even so, there are 10 missings attributes of a total of 15 at
 study if this instances are a problem by her high missing ratio."
 
 
+"We can impute mode from key signature"
+
+mode_prop <- table(songs$audio_mode) |> proportions()
+key_mode_prop <- table(songs$key, songs$audio_mode) |> proportions(margin = 1)
+
+songs <- songs |> mutate(
+    prob_major = if_else(
+        !is.na(audio_mode),
+        as.numeric(audio_mode == "Major"),
+        if_else(
+            !is.na(key),
+            key_mode_prop[key, "Major"],
+            mode_prop["Major"]
+        )
+    ),
+    audio_mode = factor(round(prob_major), labels = c("Minor", "Major"))
+)
+
+# Mode Proportion before
+mode_prop
+# Mode Proportion now
+table(songs$audio_mode) |> proportions()
