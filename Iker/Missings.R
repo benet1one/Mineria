@@ -40,12 +40,41 @@ songs_modified <- songs %>%
 
 summary(songs_modified$missing_quantity)
 
-"We can observe diferent quality of the instances. We can observe instances with 13 missings of a total of 18 attributes 
-(not including ID). In reality there are missings in attributes that are not rellevant like signature, common_signature
-and song_duration. Even so, there are 10 missings attributes of a total of 15 attributes in some instaces. We need to 
+"We can observe that there are 10 missings attributes of a total of 14 attributes in some instaces. We need to 
 study if this instances are a problem by her high missing ratio."
 
+"The reasons why we want to replace the missing values are:
+1. The mining method may have issues handling missing data.
+2. If we want to aggregate the data for other mining processes, the missing values can prevent us from aggregating 
+the data correctly.
+2. If the mining method has an automatic way of handling missing values, it will most likely eliminate the instances 
+with missing data, which can introduce bias. Other methods may perform automatic substitutions, but these replacements 
+might not be appropriate for our specific context or because the mining method doesn’t have access to all the relevant 
+information from other attributes or tables."
 
+"We have five options to handle missing values:
+1. Ignore: Some algorithms are robust to missing values (for example, decision trees).
+2. Eliminate an attribute: When a column has an extremely high proportion of missing values, sometimes it’s better 
+to remove it entirely if it cannot be properly recovered.
+3. Filter out the row: This may introduce bias, since the reasons for missing data are often related to specific 
+cases or patterns in the dataset.
+4. Replace the value: We can replace missing values manually (if there are only a few) or automatically using 
+methods that preserve the mean or variance (globally or within specific groups). A more sophisticated approach 
+is to predict the missing value using other examples — for instance, through regression models or other imputation 
+techniques.
+5. Segment: The tuples are segmented based on the values they have available. Different models are then built for 
+each segment and later combined.
+
+The most common approach is value replacement, but it comes with two main problems:
+First, we lose information, because the imputed value becomes indistinguishable from the original values, and we lose 
+the signal that it was missing.
+Second, we fabricate information, since the imputed value might be inaccurate, introducing potential errors.
+
+A good solution is to create an additional logical (boolean) attribute indicating whether the original value was 
+missing or not. Many data mining methods can take this extra attribute into account to handle missing values more 
+carefully."
+
+# (Bernat)
 "We can impute mode from key signature"
 
 mode_prop <- table(songs$audio_mode) |> proportions()
