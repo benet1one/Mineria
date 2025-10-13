@@ -12,7 +12,7 @@ songs_also <- songs |>
     mutate(
         major = audio_mode == "Major", audio_mode = NULL, 
         song_popularity = song_popularity / 100,
-        loudness = scale(loudness)[, 1],
+        loudness = -loudness / sd(loudness, na.rm = TRUE),
         tempo = scale(tempo)[, 1]
     )
 
@@ -28,13 +28,14 @@ fit_model <- function(y, data) {
         glm(y ~ ., family = quasibinomial("logit"), data = data)
         
     } else if (min(y) >= 0) {
-        lm(log(y) ~ ., data = data)
+        # lm(log(y) ~ ., data = data)
+        glm(y ~ ., family = quasipoisson("log"), data = data)
         
     } else {
         lm(y ~ ., data = data)
     }
 }
-also <- function(data, kfolds = 5, fitter = fit_model, omit_cols = c(), seed = NULL) {
+also <- function(data, kfold = 5, fitter = fit_model, omit_cols = c(), seed = NULL) {
     if (!is.null(seed)) 
         set.seed(seed)
     
@@ -46,10 +47,13 @@ also <- function(data, kfolds = 5, fitter = fit_model, omit_cols = c(), seed = N
     data <- data |> mutate(..row = 1:n(), .before = 1)
     data_split <- data |> group_split(!!folds)
     
+    weight <- numeric(length(response_cols))
     error_matrix <- matrix(
         nrow = nrow(data), 
         ncol = length(response_cols)
     )
+    
+    names(weight) <- response_cols
     colnames(error_matrix) <- response_cols
     
     for (r in response_cols) {
@@ -71,18 +75,30 @@ also <- function(data, kfolds = 5, fitter = fit_model, omit_cols = c(), seed = N
         
         error <- (response - prediction)^2
         rmse <- sqrt(mean(error))
-        weight <- max(1 - rmse, 0)
+        weight[r] <- max(1 - rmse, 0)
         
-        error_matrix[, r] <- weight * error
+        error_matrix[, r] <- weight[r] * error
     }
     
-    rowMeans(error_matrix)
+    structure(
+        rowMeans(error_matrix),
+        weight = weight,
+        fold = folds
+    )
 }
 
+# Calculate Outlier Factor (of)
 songs_also$of <- also(songs_also, omit_cols = "ID", seed = 112358)
+
+# Make sure of doesn't depend on fold 
+boxplot(songs_also$of ~ attr(songs_also$of, "fold"))
+
+# Histogram of of
 hist(songs_also$of, breaks = 20)
 
-
-mean(songs_also$of < 0.12)
+# 0.14 is a nice cutoff point
+mean(songs_also$of < 0.15)
 songs_also |> select(where(is.numeric)) |> cor(songs_also$of)
+
+# Most likely outliers
 songs_also |> arrange(-of) |> relocate(of, .after = ID)
