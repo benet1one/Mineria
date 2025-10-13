@@ -1,0 +1,279 @@
+---
+title: "descriptive analysis"
+author: "Pol Tobella Jacomet"
+date: "2025-10-13"
+output: pdf_document
+---
+
+```{r}
+
+setwd("C:/Users/Sobretaula/Documents/GitHub/Mineria")
+songs<-read.csv("data/train.csv")
+
+#Libraries
+
+library(tidyr)
+library(dplyr)
+library(visdat)
+library(GGally)
+library(ggplot2)
+library(ggpubr)
+library(purrr)
+library(corrplot)
+library(DMwR2)
+library(knitr)
+library(tinytex)
+library(cowplot)
+library(cluster)
+library(fpc)
+library(factoextra)
+library(dendextend)
+library(grid)
+
+```
+
+# Descriptive analysis before preprocessing
+
+We will do a brief descriptive analysis before the preprocessing to have a first understanding of our data, and later we will compare this results to a descriptive analysis applied to the preprocessed data. Starting with a summary of all our variables, to get a general vision of them:
+
+```{r}
+
+summary(songs)
+
+```
+
+## Univariant descriptive analysis 
+
+From our quantitative variables we can highlight the following:
+
+###Liveness
+
+We see that in most cases the track doesn't seem to present a live audience. We can also see the mean is slightly different than the median
+```{r}
+
+
+boxplot(songs$liveness, 
+        pch = 16, col = "skyblue")
+text(250, paste("Mitjana:",round(mean(songs$liveness, na.rm=TRUE),2)))
+abline(h = round(mean(songs$liveness, na.rm=TRUE),2), col = "indianred1", lwd = 2)
+legend("bottomleft", "Mean", pch = 15,col="indianred1")
+
+hist(x=songs$liveness, 
+     xlab="liveness", 
+     ylab="Frequency",col="khaki", ylim=c(0, 10), freq=F, breaks=15)
+lines(density(songs$liveness, na.rm=TRUE), lwd=3)
+
+
+```
+
+###Danceability
+
+We see that the distribution behaves like a normal distribution, with a tendency towards higher values, indicating a higher percentage of tracks being suitable to dance
+```{r}
+
+
+boxplot(songs$danceability, 
+        pch = 16, col = "skyblue")
+text(250, paste("Mitjana:",round(mean(songs$danceability, na.rm=TRUE),2)))
+abline(h = round(mean(songs$danceability, na.rm=TRUE),2), col = "indianred1", lwd = 2)
+legend("bottomleft", "Mean", pch = 15,col="indianred1")
+
+hist(x=songs$danceability, 
+     xlab="danceability", 
+     ylab="Frequency",col="khaki", ylim=c(0, 3), freq=F, breaks=15)
+lines(density(songs$danceability, na.rm=TRUE), lwd=3)
+
+
+```
+
+###Audio Valence
+
+We can observe a very uniform distribution, indicating a very wide variety of feeling conveyed in the tracks, with fewer tracks that portrey extreme values (0 or 1)
+```{r}
+
+
+boxplot(songs$audio_valence, 
+        pch = 16, col = "skyblue")
+text(250, paste("Mitjana:",round(mean(songs$audio_valence, na.rm=TRUE),2)))
+abline(h = round(mean(songs$audio_valence, na.rm=TRUE),2), col = "indianred1", lwd = 2)
+legend("bottomleft", "Mean", pch = 15,col="indianred1")
+
+hist(x=songs$audio_valence, 
+     xlab="audio valence", 
+     ylab="Frequency",col="khaki", ylim=c(0, 1.5), freq=F, breaks=15)
+lines(density(songs$audio_valence, na.rm=TRUE), lwd=3)
+
+
+```
+
+
+###Energy
+
+We see that the distribution behaves somewhat like a normal distribution, with a tendency towards higher values, indicating a higher percentage of tracks being more fast-paced
+```{r}
+
+
+boxplot(songs$energy, 
+        pch = 16, col = "skyblue")
+text(250, paste("Mitjana:",round(mean(songs$energy, na.rm=TRUE),2)))
+abline(h = round(mean(songs$energy, na.rm=TRUE),2), col = "indianred1", lwd = 2)
+legend("bottomleft", "Mean", pch = 15,col="indianred1")
+
+hist(x=songs$energy, 
+     xlab="energy", 
+     ylab="Frequency",col="khaki", ylim=c(0, 2), freq=F, breaks=15)
+lines(density(songs$energy, na.rm=TRUE), lwd=3)
+
+
+```
+
+
+###Acousticness
+
+We can observe a clear mode where the acousticness value is either 0 or extremely low (< 10^-6). We can also see a noticable difference between the mean and the median.
+```{r}
+
+
+boxplot(songs$acousticness, 
+        pch = 16, col = "skyblue")
+text(250, paste("Mitjana:",round(mean(songs$acousticness, na.rm=TRUE),2)))
+abline(h = round(mean(songs$acousticness, na.rm=TRUE),2), col = "indianred1", lwd = 2)
+legend("bottomleft", "Mean", pch = 15,col="indianred1")
+
+hist(x=songs$acousticness, 
+     xlab="acousticness", 
+     ylab="Frequency",col="khaki", ylim=c(0, 7), freq=F, breaks=15)
+lines(density(songs$acousticness, na.rm=TRUE), lwd=3)
+
+
+```
+
+
+###Speechiness
+
+We can observe that most tracks are composed of mainly none verbal parts, being only a very few ones that have a high speech ratio in the track.
+```{r}
+
+
+boxplot(songs$speechiness, 
+        pch = 16, col = "skyblue")
+text(250, paste("Mitjana:",round(mean(songs$speechiness, na.rm=TRUE),2)))
+abline(h = round(mean(songs$speechiness, na.rm=TRUE),2), col = "indianred1", lwd = 2)
+legend("bottomleft", "Mean", pch = 15,col="indianred1")
+
+hist(x=songs$speechiness, 
+     xlab="speechiness", 
+     ylab="Frequency",col="khaki", ylim=c(0, 15), freq=F, breaks=15)
+lines(density(songs$speechiness, na.rm=TRUE), lwd=3)
+
+
+```
+
+
+###Instrumentalness
+
+Similarly to the previous variable, we can see that most tracks are predicted to have no or barely any vocals. This variable will be greatly correlated with Speechiness
+```{r}
+
+
+boxplot(songs$instrumentalness, 
+        pch = 16, col = "skyblue")
+text(250, paste("Mitjana:",round(mean(songs$instrumentalness, na.rm=TRUE),2)))
+abline(h = round(mean(songs$instrumentalness, na.rm=TRUE),2), col = "indianred1", lwd = 2)
+legend("bottomleft", "Mean", pch = 15,col="indianred1")
+
+hist(x=songs$instrumentalness, 
+     xlab="instrumentalness", 
+     ylab="Frequency",col="khaki", ylim=c(0, 15), freq=F, breaks=15)
+lines(density(songs$instrumentalness, na.rm=TRUE), lwd=3)
+
+
+```
+
+
+###Song popularity
+
+Altough there seems to be a non-uniform distribution that explains this variable we can't say much about it
+```{r}
+
+
+boxplot(songs$song_popularity, 
+        pch = 16, col = "skyblue")
+text(250, paste("Mitjana:",round(mean(songs$song_popularity, na.rm=TRUE),2)))
+abline(h = round(mean(songs$song_popularity, na.rm=TRUE),2), col = "indianred1", lwd = 2)
+legend("bottomleft", "Mean", pch = 15,col="indianred1")
+
+hist(x=songs$song_popularity, 
+     xlab="song_popularity", 
+     ylab="Frequency",col="khaki", ylim=c(0, 0.03), freq=F, breaks=15)
+lines(density(songs$song_popularity, na.rm=TRUE), lwd=3)
+
+hist(x=songs$song_popularity, 
+     xlab="song_popularity", 
+     ylab="Frequency",col="khaki", ylim=c(0, 0.5), freq=F, breaks=15)
+lines(density(songs$song_popularity, na.rm=TRUE), lwd=3)
+
+```
+
+
+###Loudness
+
+We can observe that most songs have a high value of decibels, but considering that anything lower than -50dB is barely hearable it makes sense.
+```{r}
+
+
+boxplot(songs$loudness, 
+        pch = 16, col = "skyblue")
+text(250, paste("Mitjana:",round(mean(songs$loudness, na.rm=TRUE),2)))
+abline(h = round(mean(songs$loudness, na.rm=TRUE),2), col = "indianred1", lwd = 2)
+legend("bottomleft", "Mean", pch = 15,col="indianred1")
+
+hist(x=songs$loudness, 
+     xlab="loudness", 
+     ylab="Frequency",col="khaki", ylim=c(0, 0.2), freq=F, breaks=15)
+lines(density(songs$loudness, na.rm=TRUE), lwd=3)
+
+
+```
+
+
+###Song duration (ms)
+
+We can see some clear outliers that greatly distort the results. This will have to be worked on.
+```{r}
+
+
+boxplot(songs$song_duration_ms, 
+        pch = 16, col = "skyblue")
+text(250, paste("Mitjana:",round(mean(songs$song_duration_ms, na.rm=TRUE),2)))
+abline(h = round(mean(songs$song_duration_ms, na.rm=TRUE),2), col = "indianred1", lwd = 2)
+legend("bottomleft", "Mean", pch = 15,col="indianred1")
+
+hist(x=songs$song_duration_ms, 
+     xlab="song_duration_ms", 
+     ylab="song_duration_ms",col="khaki", ylim=c(0, 0.2), freq=F, breaks=15)
+lines(density(songs$loudness, na.rm=TRUE), lwd=3)
+
+
+```
+
+
+###Tempo
+
+We see that the distribution behaves quite like a normal distribution, with most values within 50-200 BPM.
+```{r}
+
+
+boxplot(songs$tempo, 
+        pch = 16, col = "skyblue")
+text(250, paste("Mitjana:",round(mean(songs$tempo, na.rm=TRUE),2)))
+abline(h = round(mean(songs$tempo, na.rm=TRUE),2), col = "indianred1", lwd = 2)
+legend("bottomleft", "Mean", pch = 15,col="indianred1")
+
+hist(x=songs$tempo, 
+     xlab="tempo", 
+     ylab="tempo",col="khaki", ylim=c(0, 0.015), freq=F, breaks=15)
+
+
+```
+
