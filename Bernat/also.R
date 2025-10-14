@@ -97,9 +97,27 @@ boxplot(songs_also$of ~ attr(songs_also$of, "fold"))
 # Histogram of of
 hist(songs_also$of, breaks = 20)
 
-# 0.14 is a nice cutoff point
+# 0.15 is a nice cutoff point
 mean(songs_also$of < 0.15)
 songs_also |> select(where(is.numeric)) |> cor(songs_also$of)
 
 # Most likely outliers
 songs_also |> arrange(-of) |> relocate(of, .after = ID)
+
+# Not detecting all of these outliers correctly
+ggplot(songs_also, aes(x = speechiness, y = instrumentalness, color = of > 0.1)) +
+    geom_point(size = 2) +
+    theme_minimal()
+
+# We're gonna have two outlier factors in [0, 1] and get the maximum of the two
+songs_also <- songs_also |> mutate(
+    instr_of = (speechiness > 0.2) * sqrt(instrumentalness * speechiness),
+    also_of = scales::rescale(of, from = c(0.1, max(of))) |> pmax(0),
+    combined_of = pmax(also_of, instr_of)
+)
+
+ggplot(songs_also, aes(x = speechiness, y = instrumentalness, color = combined_of^0.2)) +
+    geom_point(size = 2) +
+    scale_color_gradient(low = "black", high = "tomato") +
+    theme_minimal()
+
