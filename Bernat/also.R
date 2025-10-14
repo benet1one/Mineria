@@ -13,6 +13,7 @@ songs_also <- songs |>
         major = audio_mode == "Major", audio_mode = NULL, 
         song_popularity = song_popularity / 100,
         loudness = -loudness / sd(loudness, na.rm = TRUE),
+        # loudness = log(-loudness + 1) |> scale() |> _[, 1],
         tempo = scale(tempo)[, 1]
     )
 

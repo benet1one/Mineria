@@ -21,3 +21,18 @@ songs |>
     facet_wrap(~phi, scales = "free_x") +
     geom_point() +
     geom_smooth(method = "lm")
+
+
+songs |> 
+    select(where(is.numeric)) |> 
+    cor(use = "pairwise") |> 
+    corrplot::corrplot()
+
+
+lognorm_loudness <- log(-songs$loudness + 1)
+hist(lognorm_loudness)
+
+cbind(
+    raw = songs |> select(where(is.numeric)) |> cor(songs$loudness, use = "pairwise"),
+    lognorm = songs |> select(where(is.numeric)) |> cor(lognorm_loudness, use = "pairwise")
+)
