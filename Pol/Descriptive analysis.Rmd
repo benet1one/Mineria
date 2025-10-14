@@ -5,6 +5,10 @@ date: "2025-10-13"
 output: pdf_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE,message = FALSE)
+```
+
 ```{r}
 
 setwd("C:/Users/Sobretaula/Documents/GitHub/Mineria")
@@ -277,3 +281,78 @@ hist(x=songs$tempo,
 
 ```
 
+
+## Bivariant descriptive analysis 
+
+```{r}
+songs2 <- songs %>% select(liveness, danceability, audio_valence, energy, acousticness, speechiness, instrumentalness, song_popularity, loudness, song_duration_ms, tempo)
+
+vis_cor(songs2)
+ggpairs(songs2)
+
+```
+
+
+We can observe that there are some considerably high correlations in our variables. The most noticeable one is the pair loudness and energy (0.756). In fact, we can see that the variable loudness presents strong correlation with multiple variables, such as acousticness (-0.542) or instrumentalness (-0.398). Another pair of variables with strong correlation is acousticness and energy (-0.662). With this we observe a strong interconection between loudness, energy, acousticness and, in a smaller mesure, instrumentalness. After the preprocessing we will have to verify if this relations is mantained and perhaps apply a dimension reduction methodology. If we visualize in a better way this relations we get the following graphs:
+
+### Loudness vs energy
+
+```{r, fig.height=4, fig.width=7}
+ggplot(songs, aes(x=loudness,y=energy)) + 
+    geom_point(color="mediumorchid3", shape = 18) +
+    geom_smooth(method = "loess", color = "darkslategrey") +
+    theme_minimal() +
+    labs(
+        title = "Relation between loudness and energy",
+        x = "loudness",
+        y = "energy",
+    )
+
+```
+
+### Loudness vs acousticness
+
+```{r, fig.height=4, fig.width=7}
+ggplot(songs, aes(x=loudness,y=acousticness)) + 
+    geom_point(color="mediumorchid3", shape = 18) +
+    geom_smooth(method = "loess", color = "darkslategrey") +
+    theme_minimal() +
+    labs(
+        title = "Relation between loudness and acousticness",
+        x = "loudness",
+        y = "acousticness",
+    )
+
+```
+
+### Loudness vs instrumentalness
+
+
+```{r, fig.height=4, fig.width=7}
+ggplot(songs, aes(x=loudness,y=instrumentalness)) + 
+    geom_point(color="mediumorchid3", shape = 18) +
+    geom_smooth(method = "loess", color = "darkslategrey") +
+    theme_minimal() +
+    labs(
+        title = "Relation between loudness and instrumentalness",
+        x = "loudness",
+        y = "instrumentalness",
+    )
+
+```
+
+
+### Acousticness vs energy
+
+```{r, fig.height=4, fig.width=7}
+ggplot(songs, aes(x=acousticness,y=energy)) + 
+    geom_point(color="mediumorchid3", shape = 18) +
+    geom_smooth(method = "loess", color = "darkslategrey") +
+    theme_minimal() +
+    labs(
+        title = "Relation between acousticness and energy",
+        x = "acousticness",
+        y = "energy",
+    )
+
+```
