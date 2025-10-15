@@ -1,5 +1,6 @@
 
 library(tidyverse)
+library(visdat)
 source("reading.R")
 
 " EXecute after reading.R code"
@@ -73,6 +74,37 @@ Second, we fabricate information, since the imputed value might be inaccurate, i
 A good solution is to create an additional logical (boolean) attribute indicating whether the original value was 
 missing or not. Many data mining methods can take this extra attribute into account to handle missing values more 
 carefully."
+
+# (Iker)
+"
+- Imputation
+- Interpolation (for temporal data), 
+- Model-based imputation (predictive model)(regression, local least square imputation, Support Vector Machine, 
+    decision tree, artificial neural net),  
+- Performing the missing imputation (Maximum Likelihood Estimation),
+- EM algorithms (Expectetion-Maximization algorithms),
+- Multiples imputation,
+- Distance-based methods (k-NN),
+- MICE method,
+- MIMMI method,
+- Other solutions (fuzzy sets, probability distributions or confidence intervals)
+
+
+Well, it's a list of methods that can be usefull depending of the situation, but we need to decide which are the best
+methods for our data. 
+Imputation it's easy, but distort the variance and correlations, so we will not use it.
+Interpoletion it's one of the best methods when we have temporal data, but iy's not our case.
+Model-based imputation take advantage of the relationship between variables for imput with precision, we can use it.
+Advanced statistical methods like MLE and EM use statistical theory and are useful, but they are more complicated. 
+  Es don't descart to use it.
+Multiples imputaton like MICE and MIMMI are useful because preserve the uncertainity of the missings. We can use it.
+k-NN is useful because he not need to assume some specific distribution. We can use it.
+Other methods are necesary to evaluate if are useful in this case like fuzzy sets, naive bayes, imputation using 
+  probability distributions or confidence intervals, etc.
+
+"
+library(visdat)
+vis_miss(df)
 
 # (Bernat)
 "We can impute mode from key signature"
