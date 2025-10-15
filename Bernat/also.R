@@ -1,4 +1,5 @@
 
+library(ggplot2)
 source("reading.R")
 
 songs$duration_qual <- cut(

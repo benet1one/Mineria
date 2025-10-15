@@ -40,6 +40,7 @@ transformed_mean_cor <- function(phi) {
         mean()
 }
 
+# remotes::install_github("benet1one/layer")
 opt <- layer::maximize(transformed_mean_cor, init = c(energy = 0, acousticness = 0))
 best_phi <- map_phi(opt$solution)
 print(best_phi)
