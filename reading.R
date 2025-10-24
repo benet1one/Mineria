@@ -40,3 +40,10 @@ song_data_frame <- function(df) {
 songs <- read.csv("data/train.csv") |> 
     distinct(pick(!ID), .keep_all = TRUE) |> 
     song_data_frame()
+
+songs_test <- read.csv("data/test.csv") |> 
+    song_data_frame()
+
+songs_all <- bind_rows(songs, songs_test) |> 
+    mutate(training = !is.na(song_popularity)) |> 
+    select(-song_popularity)
