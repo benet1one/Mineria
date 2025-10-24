@@ -122,7 +122,7 @@ songs <- songs |> mutate(
             mode_prop["Major"]
         )
     ),
-    audio_mode = factor(round(prob_major), labels = c("Minor", "Major"))
+    audio_mode = factor(prob_major > 0.6, labels = c("Minor", "Major"))
 )
 
 # Mode Proportion before
