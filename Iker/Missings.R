@@ -104,7 +104,7 @@ Other methods are necesary to evaluate if are useful in this case like fuzzy set
 
 "
 library(visdat)
-vis_miss(df)
+vis_miss(songs)
 
 # (Bernat)
 "We can impute mode from key signature"
@@ -129,3 +129,31 @@ songs <- songs |> mutate(
 mode_prop
 # Mode Proportion now
 table(songs$audio_mode) |> proportions()
+
+
+# Mice ------------------------------------------------------------
+
+# Mice allows a predictor matrix with the following interpretation:
+# - Rows: Imputed variable
+# - Columns: Regressor variables
+# A value of 1 means the row variable will be imputed using the column variable.
+predictor_matrix <- matrix(1L, nrow = ncol(songs), ncol = ncol(songs))
+rownames(predictor_matrix) <- colnames(predictor_matrix) <- names(songs)
+
+# ID and popularity cannot be used as a regressors
+# because we will use CART, it's better to use audio_mode as binary than to use prob_major.
+dont_regress <- c("ID", "song_popularity", "prob_major")
+predictor_matrix[, dont_regress] <- 0L
+
+songs_mice <- mice::mice(
+    data = songs,
+    m = 3,
+    method = "cart",
+    predictorMatrix = predictor_matrix,
+    seed = 5151,
+)
+
+songs_imputed <- mice::complete(songs_mice, action = songs_mice$m) |> 
+    as_tibble()
+
+saveRDS(songs_imputed, "data/songs_imputed.RDS")
