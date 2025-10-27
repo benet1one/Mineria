@@ -142,8 +142,12 @@ plot(energy ~ loudness, data = songs, col = ifelse(songs$loudness > 0, "red", "b
 # which is heavily correlated with loudness, we impute it as zero.
 songs$loudness[songs$loudness >= 0] <- (-2e-8)
 
-
 # Mice ------------------------------------------------------------
+
+# Transform energy and acousticness
+logit <- \(x) log(x / (1 - x))
+logit_inv <- \(x) exp(x) / (1 + exp(x))
+songs$acousticness <- logit(songs$acousticness)
 
 # Mice allows a predictor matrix with the following interpretation:
 # - Rows: Imputed variable
@@ -152,20 +156,41 @@ songs$loudness[songs$loudness >= 0] <- (-2e-8)
 predictor_matrix <- matrix(1L, nrow = ncol(songs), ncol = ncol(songs))
 rownames(predictor_matrix) <- colnames(predictor_matrix) <- names(songs)
 
-# ID and popularity cannot be used as a regressors
-# because we will use CART, it's better to use audio_mode as binary than to use prob_major.
-dont_regress <- c("ID", "song_popularity", "prob_major")
-predictor_matrix[, dont_regress] <- 0L
+# ID and popularity cannot be used as a regressors.
+predictor_matrix[, c("ID", "song_popularity")] <- 0L
+# Probabily bad to regress by key.
+predictor_matrix[, "key"] <- 0L
+# Probabily better to use audio_mode.
+predictor_matrix[, "prob_major"] <- 0L
+
+# Most variables are correctly imputed with predictive mean, matching, but some aren't.
+methods <- character(ncol(songs))
+names(methods) <- names(songs)
+methods[] <- "pmm"
+methods["loudness"] <- "lasso.norm"
+methods["instrumentalness"] <- "rf"
+
+# Acousticness is very annoying, I will try to make it depend only on energy, loudness and the
+# categorical variables.
+methods["acousticness"] <- "pmm"
+predictor_matrix["acousticness", ] <- 0L
+predictor_matrix["acousticness", c("energy", "loudness", "time_signature", "audio_mode")] <- 1L
+
+# Sensitively imputed variables should not depend on other sensitively imputed variables
+# unless their correlation is strong.
+predictor_matrix["loudness", "speechiness"] <- 0L
+predictor_matrix[c("loudness", "instrumentalness", "speechiness"), "acousticness"] <- 0L
 
 songs_mice <- mice::mice(
     data = songs,
-    m = 3,
-    method = "cart",
+    m = 5,
+    method = methods,
     predictorMatrix = predictor_matrix,
     seed = 5151,
 )
 
 songs_imputed <- mice::complete(songs_mice, action = songs_mice$m) |> 
+    mutate(loudness = pmin(loudness, 0), acousticness = logit_inv(acousticness)) |> 
     as_tibble()
 
 saveRDS(songs_imputed, "data/songs_imputed.RDS")
