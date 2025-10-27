@@ -7,6 +7,25 @@ songs |>
     cor(use = "pairwise") |> 
     corrplot::corrplot()
 
+songs |> 
+    select(where(is.numeric)) |> 
+    sapply(function(variable) {
+        lm(variable ~ time_signature + audio_mode, data = songs) |> 
+            summary() |> 
+            _$fstatistic["value"] |> 
+            unname()
+    }) |> 
+    sort(decreasing = TRUE)
+
+songs |> 
+    filter(!is.na(time_signature), !is.na(audio_mode)) |>
+    select(acousticness, danceability, energy, loudness, speechiness, time_signature, audio_valence, audio_mode) |> 
+    tidyr::pivot_longer(!c(time_signature, audio_mode), names_to = "variable") |> 
+    ggplot(aes(y = value, x = time_signature, color = audio_mode)) +
+    facet_wrap(~variable, scales = "free") +
+    geom_boxplot(fatten = 1) +
+    theme_minimal()
+
 lognorm_loudness <- log(-songs$loudness + 1)
 hist(lognorm_loudness)
 
@@ -14,10 +33,6 @@ cbind(
     raw = songs |> select(where(is.numeric)) |> cor(songs$loudness, use = "pairwise"),
     lognorm = songs |> select(where(is.numeric)) |> cor(lognorm_loudness, use = "pairwise")
 )
-
-# TEST WITH AND WITHOUT
-# songs$loudness <- lognorm_loudness
-
 
 map_phi <- function(phi) {
     scales::rescale(
