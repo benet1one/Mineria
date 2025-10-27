@@ -13,14 +13,6 @@ songs |>
     theme_minimal()
 
 
-# Loudness is suspicious, only two values above 0
-songs |> arrange(-loudness) |> select(loudness, energy)
-plot(energy ~ loudness, data = songs)
-
-# Since the biggest value has very high energy, we impute it 
-songs$loudness[songs$loudness >= 0] <- (-2e-8)
-
-
 # Song duration
 duration <- hms::hms(songs$song_duration_ms / 1000)
 ggplot(NULL, aes(x = duration)) + geom_boxplot()

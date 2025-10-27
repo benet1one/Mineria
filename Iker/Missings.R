@@ -131,6 +131,18 @@ mode_prop
 table(songs$audio_mode) |> proportions()
 
 
+# Found Outliers --------------------------------------------------
+
+# Loudness is suspicious, only two values above 0
+songs |> arrange(-loudness) |> select(loudness, energy)
+plot(energy ~ loudness, data = songs, col = ifelse(songs$loudness > 0, "red", "black"))
+
+# One of them is slightly above zero. Changing its value to zero is convenient later on.
+# The other one is a clear univariate outlier. Because it has high energy,
+# which is heavily correlated with loudness, we impute it as zero.
+songs$loudness[songs$loudness >= 0] <- (-2e-8)
+
+
 # Mice ------------------------------------------------------------
 
 # Mice allows a predictor matrix with the following interpretation:
