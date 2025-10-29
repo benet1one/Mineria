@@ -1,14 +1,103 @@
 
 library(tidyverse)
 library(visdat)
+setwd("D:/Iker/VSC-Python/Mineria")
 source("reading.R")
 
-" EXecute after reading.R code"
-"(idea for other part) Data integration is not rellevant in this project since there is only a single data source."
+# Starting of the missing treatment --------------------------------------------
+# 1. Identify which variables and observations have missing values.
+## Variables
+songs %>% 
+  summarise(across(everything(), ~ sum(is.na(.)))) %>% 
+  pivot_longer(everything(), 
+               names_to = "Variables", 
+               values_to = "N_missings") %>% 
+  arrange(desc(N_missings)) %>% 
+  print(n = Inf)
 
-"Once the data has been integrated, we can summarize the characteristics of attributes (means, miniums, maximums etc.)"
-summary(songs)
+## Observations
+songs %>% 
+  mutate(N_missings = rowSums(is.na(.))) %>% 
+  arrange(desc(N_missings)) %>% 
+  select(N_missings)
 
+songs %>%
+  mutate(N_missings = rowSums(is.na(.))) %>%
+  count(N_missings, name = "n_observaciones") %>%
+  arrange(desc(N_missings))
+
+# 2. Standardize missing code
+songs %>%
+  summarise(across(where(is.numeric),
+                   list(min = ~min(., na.rm = TRUE),
+                        max = ~max(., na.rm = TRUE)))) %>%
+  pivot_longer(cols = everything(),
+               names_to = c("Variable", ".value"),
+               names_sep = "_") %>%
+  mutate(across(c(min, max), as.numeric)) %>%
+  arrange(desc(max))
+
+missing_expressions <- c("?", "NA ", "N/A", "none", "None", ".", "", " ")
+
+songs_original <- songs
+
+songs <- songs %>%
+  mutate(
+    across(
+      where(is.numeric),
+      ~ ifelse(. %in% missing_expressions, NA, .)
+    )
+  )
+
+na_comparison <- tibble(
+  variable = names(songs),
+  antes = map_int(songs_original, ~ sum(is.na(.))),
+  despues = map_int(songs, ~ sum(is.na(.))),
+  nuevos_NA = despues - antes
+)
+
+na_comparison %>%
+  filter(nuevos_NA > 0)
+
+na_comparison
+"There are not an irregular format of missing expresion."
+
+# 3. Count missing values by column and row to evaluate the fiability.
+## Variables.
+missing_vars <- songs %>%
+  summarise(across(everything(),
+                   list(n_miss = ~ sum(is.na(.)),
+                        prop_miss = ~ mean(is.na(.))))) %>%
+  pivot_longer(
+    everything(),
+    names_to = c("Variable", ".value"),
+    names_pattern = "^(.*)_(n_miss|prop_miss)$"
+  ) %>%
+  arrange(desc(prop_miss))
+
+## Observations
+missing_rows <- songs %>%
+  mutate(n_miss = rowSums(is.na(.)),
+         prop_miss = n_miss / ncol(songs))
+
+missing_rows %>%
+  ggplot(aes(x = prop_miss)) +
+  geom_histogram(bins = 30) +
+  labs(title = "Distribución de proporción de missing por individuo",
+       x = "Proporción de valores faltantes",
+       y = "Frecuencia")
+
+# 4. Analyse missing patron
+vis_miss(songs)
+
+library(naniar)
+gg_miss_upset(songs)
+
+library(BaylorEdPsych)
+test_MCAR <- LittleMCAR(df)
+test_MCAR$p.value
+"The summary says that all the variables of songs data (except ID and song_popularity) have 3956 missing values, and 
+the vis_miss function gives a plot with the missing located, "
 "Things that we can observe:
   1. Same cuantity of NA's in every attribute, but they are located randomly.
   2. What is '(Other)' value on key and signature attributes?
@@ -90,21 +179,9 @@ carefully."
 - Other solutions (fuzzy sets, probability distributions or confidence intervals)
 
 
-Well, it's a list of methods that can be usefull depending of the situation, but we need to decide which are the best
-methods for our data. 
-Imputation it's easy, but distort the variance and correlations, so we will not use it.
-Interpoletion it's one of the best methods when we have temporal data, but iy's not our case.
-Model-based imputation take advantage of the relationship between variables for imput with precision, we can use it.
-Advanced statistical methods like MLE and EM use statistical theory and are useful, but they are more complicated. 
-  Es don't descart to use it.
-Multiples imputaton like MICE and MIMMI are useful because preserve the uncertainity of the missings. We can use it.
-k-NN is useful because he not need to assume some specific distribution. We can use it.
-Other methods are necesary to evaluate if are useful in this case like fuzzy sets, naive bayes, imputation using 
-  probability distributions or confidence intervals, etc.
+Of all the posible mathods, the most useful and practical methods are k-NN, MICE, MIMMI and Random Forest Imputation.
 
 "
-library(visdat)
-vis_miss(songs)
 
 # (Bernat)
 "We can impute mode from key signature"
