@@ -1,6 +1,7 @@
 
 source("reading.R")
 songs_imp <- readRDS("data/songs_imputed.RDS")
+songs <- songs |> filter(ID %in% songs_imp$ID)
 where_imp <- is.na(songs) |> as_tibble()
 
 imputation_scatterplot <- function(x, y) {
