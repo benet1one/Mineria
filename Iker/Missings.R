@@ -106,8 +106,7 @@ Other methods are necesary to evaluate if are useful in this case like fuzzy set
 library(visdat)
 vis_miss(songs)
 
-# (Bernat)
-"We can impute mode from key signature"
+# Imputing mode from key ---------------------------------------------
 
 mode_prop <- table(songs$audio_mode) |> proportions()
 key_mode_prop <- table(songs$key, songs$audio_mode) |> proportions(margin = 1)
@@ -131,6 +130,11 @@ mode_prop
 table(songs$audio_mode) |> proportions()
 
 
+# Imputing instrumentalness from speechiness ----------------------
+
+songs$instrumentalness[is.na(songs$instrumentalness) & songs$speechiness > 0.5] <- 0
+
+
 # Found Outliers --------------------------------------------------
 
 # Loudness is suspicious, only two values above 0
@@ -140,7 +144,8 @@ plot(energy ~ loudness, data = songs, col = ifelse(songs$loudness > 0, "red", "b
 # One of them is slightly above zero. Changing its value to zero is convenient later on.
 # The other one is a clear univariate outlier. Because it has high energy,
 # which is heavily correlated with loudness, we impute it as zero.
-songs$loudness[songs$loudness >= 0] <- (-2e-8)
+songs$loudness[songs$loudness >= 0] <- 0
+
 
 # Mice ------------------------------------------------------------
 
@@ -190,7 +195,10 @@ songs_mice <- mice::mice(
 )
 
 songs_imputed <- mice::complete(songs_mice, action = songs_mice$m) |> 
-    mutate(loudness = pmin(loudness, 0), acousticness = logit_inv(acousticness)) |> 
+    # Truncate loudness to less than zero
+    mutate(loudness = pmin(loudness, 0)) |> 
+    # Revert transformation on acousticness
+    mutate(acousticness = logit_inv(acousticness)) |> 
     as_tibble()
 
 saveRDS(songs_imputed, "data/songs_imputed.RDS")

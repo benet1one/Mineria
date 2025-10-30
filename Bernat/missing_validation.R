@@ -65,3 +65,5 @@ imputation_scatterplot(energy, acousticness)
 imputation_scatterplot(danceability, audio_valence)
 imputation_scatterplot(instrumentalness, speechiness)
 
+mean(songs$instrumentalness > 0, na.rm = TRUE)
+mean(songs_imp$instrumentalness > 0)
