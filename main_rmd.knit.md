@@ -37,44 +37,9 @@ header-includes:
 \tableofcontents
 \newpage
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE,warning = FALSE,message = FALSE)
-options(tinytex.verbose = TRUE)
-```
 
-```{r}
-#### Libraries that might be useful  ####
 
-# library(clustMixType)
-# library(tidyr)
-# library(dplyr)
-# library(visdat)
-# library(GGally)
-# library(ggplot2)
-# library(ggpubr)
-# library(purrr)
-# library(corrplot)
-# library(DMwR2)
-# library(knitr)
-# library(tinytex)
-# library(cowplot)
-# library(cluster)
-# library(fpc)
-# library(factoextra)
-# library(dendextend)
-# library(grid)
-# library(sjPlot)
-# library(inspectdf)
-# library(isotree)
-# library(reticulate)
-# library(lubridate)
-# library(NbClust)
-# library(FactoMineR)
-# library(modeest)
-# library(FactoClass)
-# library(broom)
-# library(gridExtra)
-```
+
 
 # Introduction
 
@@ -95,6 +60,7 @@ External Supporting sources:
 -	Kaggle competition: https://www.kaggle.com/competitions/prediccion-de-la-popularidad-de-canciones/overview
 - Spotify API Documentation about musical attributes: https://developer.spotify.com/documentation/web-api
 
+\newpage
 # Metadata
 
 Our dataset consists of 13186 imputs of spotify tracks with 15 variables. From those, 3 are qualitative variables while 12 are quantitative variables.
@@ -194,78 +160,38 @@ Example: 118.211
 ## The data
 
 In this section we show a summary of our data
-```{r}
-
-#My own (Pol) wd, not standard
-setwd("D:/Iker/VSC-Python/Mineria")
-songs<-read.csv("data/train.csv")
-summary(songs)
 
 ```
-
-# Metodology
-
-The project follows a structured approach based on CRISP-DM (Cross Industry Standard Process of Data Mining), adapted to the context of predicting song popularity. Each phase includes assigned team members to ensure an efficient and transparent workflow.
-
-## Business Understanding
-
-In this initial phase, the primary objective is to understand the problem domain, define clear goals for the model, and establish the evaluation metrics that guide the project. Key activities include identifying the target variables (song_popularity), formulating the main research question, and determining the secondary objectives, such as identifying the most influential musical features.
-
-%%% is responsable for this phase, coordinating the team in defining KPIs and the SMART criteria (Specific, Measurable, Achievable, Relevant, Time-bound). Additionaly, this stage involves assessing avaible resources and constraints, ensuring that the team has access to the required data and computational tools.
-Proper completion of this phase guarantees that subsequent stages are aligned with the project’s business objectives.
-
-## Data Understanding
-
-This phase focuses on collecting, exploring, and verifying the quality of the dataset. %%% lead the activities, ensuring that the data preparation process is both technically rigorous and aligned with the project’s objectives. Their tasks include:
-
-Gathering data from the training file (train.csv) and ensuring it contains the necessary attributes for modeling.
-
-Performing exploratory data analysis (EDA) to identify patterns, distributions, correlations, and potential anomalies.
-
-Checking for missing values, outliers, and duplicates to ensure the dataset is suitable for modeling.
-
-Structuring and integrating data as needed, for instance, creating derived features or harmonizing formats across variables.
-
-The goal of this phase is to obtain a comprehensive understanding of the dataset and identify potential issues that may affect the modeling process.
-
-## Data Preparation
-
-Once the data has been understood, this phase aims to construct the dataset that will be used for modeling. %%% are responsible for executing the preprocessing steps required to ensure data quality and consistency. Key tasks include:
-
-- Cleaning the dataset by handling missing values and removing inconsistencies.
-- Transforming variables (scaling, normalization, encoding categorical variables).
-- Conducting feature engineering to create new meaningful predictors (e.g., ratios, combined variables, or interaction terms).
-- Selecting the most relevant features to optimize model performance and prevent overfitting.
-- Preparing final datasets for training, validation, and testing.
-
-The output of this phase is a high-quality analytical base that will serve as input for model training and evaluation.
-
-## Modeling
-
-%%% is responsible for the modeling phase, which includes:
-
-- Selecting appropriate algorithms for regression tasks, considering models such as K-Nearest Neighbors (KNN) and Naive Bayes as initial approaches.
-- Applying Association Rules to uncover hidden relationships between musical attributes and popularity patterns.
-- Evaluating models using the MAPE metric, as well as complementary metrics such as RMSE and MAE.
-- Interpreting results to understand which musical variables have the greatest influence on a song’s popularity.
-
-The modeling phase ensures that the predictive system is both accurate and robust, capable of generalizing well to unseen data.
-
-## Evaluation
-
-This phase assesses the model’s effectiveness in meeting the defined business objectives. %%% jointly lead the evaluation, verifying both the technical performance and the business relevance of the results. Key tasks include:
-
-- Comparing model results against predefined KPIs and metrics (MAPE, RMSE, MAE).
-- Conducting error analysis to identify potential biases or patterns of poor performance.
-- Assessing model interpretability to ensure insights are understandable to stakeholders.
-
-Validating whether the model meets the initial objectives defined during the Business Understanding phase.
-
-The purpose of this phase is to ensure the chosen model not only performs well statistically but also provides valuable insights that align with business needs.
-
-## Deployment
-
-The Deployment phase, typically involving implementation of models into production environments or dashboards, is not part of the current project scope.
-
-However, this phase is included conceptually within the CRISP-DM framework to illustrate the complete data science lifecycle.
-In a future extension, deployment activities could involve automating model retraining, integrating predictions into a Spotify-like recommendation system, or visualizing results through interactive dashboards.
+##        ID           liveness        loudness        danceability  
+##  Min.   :    1   Min.   :0.015   Min.   :-36.729   Min.   :0.000  
+##  1st Qu.: 3297   1st Qu.:0.093   1st Qu.: -9.095   1st Qu.:0.531  
+##  Median : 6594   Median :0.121   Median : -6.587   Median :0.645  
+##  Mean   : 6594   Mean   :0.179   Mean   : -7.449   Mean   :0.634  
+##  3rd Qu.: 9890   3rd Qu.:0.221   3rd Qu.: -4.921   3rd Qu.:0.749  
+##  Max.   :13186   Max.   :0.986   Max.   :  1.342   Max.   :0.987  
+##                  NA's   :3956    NA's   :3956      NA's   :3956   
+##  song_duration_ms  time_signature  audio_valence       energy     
+##  Min.   :  26186   Min.   :0.000   Min.   :0.000   Min.   :0.002  
+##  1st Qu.: 184000   1st Qu.:4.000   1st Qu.:0.339   1st Qu.:0.510  
+##  Median : 211233   Median :4.000   Median :0.530   Median :0.670  
+##  Mean   : 217955   Mean   :3.957   Mean   :0.531   Mean   :0.645  
+##  3rd Qu.: 242292   3rd Qu.:4.000   3rd Qu.:0.728   3rd Qu.:0.817  
+##  Max.   :1799346   Max.   :5.000   Max.   :0.982   Max.   :0.999  
+##  NA's   :3956      NA's   :3956    NA's   :3956    NA's   :3956   
+##      tempo         acousticness    speechiness         key        
+##  Min.   :  0.00   Min.   :0.000   Min.   :0.000   Min.   : 0.000  
+##  1st Qu.: 99.01   1st Qu.:0.024   1st Qu.:0.038   1st Qu.: 2.000  
+##  Median :120.27   Median :0.131   Median :0.056   Median : 5.000  
+##  Mean   :121.68   Mean   :0.258   Mean   :0.103   Mean   : 5.306  
+##  3rd Qu.:140.00   3rd Qu.:0.422   3rd Qu.:0.122   3rd Qu.: 8.000  
+##  Max.   :242.32   Max.   :0.996   Max.   :0.940   Max.   :11.000  
+##  NA's   :3956     NA's   :3956    NA's   :3956    NA's   :3956    
+##  instrumentalness   audio_mode    song_popularity 
+##  Min.   :0.000    Min.   :0.000   Min.   :  0.00  
+##  1st Qu.:0.000    1st Qu.:0.000   1st Qu.: 40.00  
+##  Median :0.000    Median :1.000   Median : 56.00  
+##  Mean   :0.075    Mean   :0.624   Mean   : 52.94  
+##  3rd Qu.:0.002    3rd Qu.:1.000   3rd Qu.: 69.00  
+##  Max.   :0.997    Max.   :1.000   Max.   :100.00  
+##  NA's   :3956     NA's   :3956
+```
