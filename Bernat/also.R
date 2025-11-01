@@ -1,6 +1,6 @@
 
 library(ggplot2)
-source("reading.R")
+songs <- readRDS("data/songs_imputed.RDS")
 
 songs$duration_qual <- cut(
     songs$song_duration_ms, 
@@ -9,17 +9,12 @@ songs$duration_qual <- cut(
 )
 
 songs_also <- songs |> 
-    select(-key, -time_signature, -song_duration_ms) |> 
+    select(-key, -time_signature, -song_duration_ms, -prob_major) |> 
     mutate(
         major = audio_mode == "Major", audio_mode = NULL, 
         song_popularity = song_popularity / 100,
-        loudness = -loudness / sd(loudness, na.rm = TRUE),
-        # loudness = log(-loudness + 1) |> scale() |> _[, 1],
         tempo = scale(tempo)[, 1]
     )
-
-# Delete once imputed
-songs_also <- songs_also[complete.cases(songs_also), ]
 
 
 fit_model <- function(y, data) {
@@ -30,24 +25,32 @@ fit_model <- function(y, data) {
         glm(y ~ ., family = quasibinomial("logit"), data = data)
         
     } else if (min(y) >= 0) {
-        # lm(log(y) ~ ., data = data)
         glm(y ~ ., family = quasipoisson("log"), data = data)
         
     } else {
         lm(y ~ ., data = data)
     }
 }
-also <- function(data, kfold = 5, fitter = fit_model, omit_cols = c(), seed = NULL) {
+
+# Based on https://cienciadedatos.net/documentos/67_deteccion_anomalias_also
+# Implemented k-fold as the article suggests, so that we don't predict outliers
+# with models trained on the same outliers.
+also <- function(data, kfold = 5, fitter = fit_model, dont_fit = c(), seed = NULL) {
     if (!is.null(seed)) 
         set.seed(seed)
     
     response_cols <- data |> 
-        select(where(is.numeric), where(is.logical), -any_of(omit_cols)) |> 
+        select(where(is.numeric), where(is.logical)) |> 
+        select(-any_of(dont_fit)) |> 
         names()
-        
-    folds <- rep_len(1:kfold, nrow(data))[sample.int(nrow(data))]
-    data <- data |> mutate(..row = 1:n(), .before = 1)
-    data_split <- data |> group_split(!!folds)
+
+    data <- data |> 
+        mutate(..row = 1:n(), .before = 1) |> 
+        group_by(pick(where(is.factor), where(is.logical))) |> 
+        mutate(..fold = sample.int(kfold, size = n(), replace = TRUE), .after = 1) |> 
+        ungroup()
+    
+    data_split <- data |> group_split(..fold)
     
     weight <- numeric(length(response_cols))
     error_matrix <- matrix(
@@ -66,7 +69,7 @@ also <- function(data, kfold = 5, fitter = fit_model, omit_cols = c(), seed = NU
             test <- data_split[[k]]
             train <- data_split[setdiff(1:kfold, k)] |> 
                 bind_rows() |> 
-                select(-..row)
+                select(-..row, -..fold)
             
             y <- train[[r]]
             x <- train[names(train) != r]
@@ -84,41 +87,72 @@ also <- function(data, kfold = 5, fitter = fit_model, omit_cols = c(), seed = NU
     
     structure(
         rowMeans(error_matrix),
+        error_matrix = error_matrix,
         weight = weight,
-        fold = folds
+        fold = data$..fold
     )
 }
 
 # Calculate Outlier Factor (of)
-songs_also$of <- also(songs_also, omit_cols = "ID", seed = 112358)
+# We don't fit variables that are harder to predict
+songs_also$of <- songs_also |> 
+    select(-ID) |> 
+    also(dont_fit = c("instrumentalness", "speechiness", "loudness"), seed = 112358)
 
 # Make sure of doesn't depend on fold 
 boxplot(songs_also$of ~ attr(songs_also$of, "fold"))
+kruskal.test(songs_also$of ~ attr(songs_also$of, "fold"))
 
-# Histogram of of
-hist(songs_also$of, breaks = 20)
+# Histogram of outlier_factor
+hist(songs_also$of, breaks = 50)
 
-# 0.15 is a nice cutoff point
-mean(songs_also$of < 0.15)
-songs_also |> select(where(is.numeric)) |> cor(songs_also$of)
+cutmin <- 0.06
+cutmax <- 0.12
+mean(songs_also$of < cutmin)
+mean(songs_also$of < cutmax)
 
-# Most likely outliers
-songs_also |> arrange(-of) |> relocate(of, .after = ID)
+# Outlier factor does not seem to depend too much on a single variable.
+# It is a good multivariate metric
+songs_also |> select(where(is.numeric), -of) |> cor(songs_also$of)
 
-# Not detecting all of these outliers correctly
-ggplot(songs_also, aes(x = speechiness, y = instrumentalness, color = of > 0.1)) +
-    geom_point(size = 2) +
-    theme_minimal()
+# Most likely outliers and explanations
+songs_also |> 
+    mutate(error_matrix = attr(of, "error_matrix")) |> 
+    filter(of > cutmin) |> 
+    rowwise() |> 
+    mutate(most_extraordinary = colnames(error_matrix)[which.max(error_matrix)]) |> 
+    select(ID, of, most_extraordinary, error_matrix) |> 
+    arrange(-of)
 
-# We're gonna have two outlier factors in [0, 1] and get the maximum of the two
+# We standarize of between [0, 1]
+songs_also$also_of <- scales::rescale(
+    songs_also$of,
+    from = c(cutmin, cutmax),
+    to = c(0, 1)
+) |> 
+    pmax(0) |> 
+    pmin(1)
+
+# Since we didn't predict instrumentalness or speechiness, 
+# we manually detect bivariate outliers
 songs_also <- songs_also |> mutate(
-    instr_of = (speechiness > 0.2) * sqrt(instrumentalness * speechiness),
-    also_of = scales::rescale(of, from = c(0.1, max(of))) |> pmax(0),
+    instr_of = 
+        (instrumentalness > 0.01) * 
+        (speechiness > 0.50) *
+        pmax(speechiness, instrumentalness),
+    
+    # We take the maximum of the two outlier factors
     combined_of = pmax(also_of, instr_of)
 )
 
-ggplot(songs_also, aes(x = speechiness, y = instrumentalness, color = combined_of^0.2)) +
+ggplot(songs_also, aes(x = instrumentalness, y = speechiness, color = combined_of)) +
     geom_point(size = 2) +
-    scale_color_gradient(low = "black", high = "tomato") +
+    scale_color_gradient(low = "black", high = "royalblue1") +
     theme_minimal()
 
+# Percentage of observations with 
+mean(songs_also$combined_of > 0)
+
+# Finally, convert outlier factor into a weight to use in models later.
+songs$outlier_weight <- 1 - songs_also$combined_of
+saveRDS(songs, file = "data/songs_outlied.RDS")
