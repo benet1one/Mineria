@@ -33,7 +33,7 @@ song_data_frame <- function(df) {
     # its interpretation is not.
     
     # Obvious error, tempo can not be zero
-    df$tempo[df$tempo == 0L] <- NA
+    df$tempo[df$tempo <= 0L] <- NA
     return(df)
 }
 
