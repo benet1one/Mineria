@@ -81,6 +81,11 @@ options(tinytex.verbose = TRUE)
 In this paper we will analyze data related to spotify tracks, with the objective of determining a way to predict a song/track popularity in the site through information related to that track. ***Needs to be expanded a bit probably***
 
 
+## Link to Repository
+
+https://benet1one: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@github.com/benet1one/Mineria
+
+
 # Motivation
 
 Our objective is to develop a regression model capable of predicting the popularity of songs using musical attributes and associated metadata. This project aims to identify patterns and characteristics that explain why certain songs achieve higher levels of popularity, enabling streaming platforms to make more informed decisions regarding recommendations and playlist curation.
@@ -92,7 +97,7 @@ In addition to the main objective, we seek to evaluate the quality and consisten
 To assess model performance, we will primarily use control metrics such as MAPE, and complementary metrics such as RMSE and MAE. In addition, business-oriented indicators will be considered, such as the ability to identify potential hit songs before they achieve success on streaming platforms.
 
 External Supporting sources:
--	Kaggle competition: https://www.kaggle.com/competitions/prediccion-de-la-popularidad-de-canciones/overview
+- Kaggle competition: https://www.kaggle.com/competitions/prediccion-de-la-popularidad-de-canciones/overview
 - Spotify API Documentation about musical attributes: https://developer.spotify.com/documentation/web-api
 
 # Metadata
@@ -195,15 +200,10 @@ Example: 118.211
 
 In this section we show a summary of our data
 ```{r}
-
-#My own (Pol) wd, not standard
-setwd("D:/Iker/VSC-Python/Mineria")
-songs<-read.csv("data/train.csv")
-summary(songs)
-
+source("reading.R")
 ```
 
-# Metodology
+# Methodology
 
 The project follows a structured approach based on CRISP-DM (Cross Industry Standard Process of Data Mining), adapted to the context of predicting song popularity. Each phase includes assigned team members to ensure an efficient and transparent workflow.
 
@@ -269,3 +269,71 @@ The Deployment phase, typically involving implementation of models into producti
 
 However, this phase is included conceptually within the CRISP-DM framework to illustrate the complete data science lifecycle.
 In a future extension, deployment activities could involve automating model retraining, integrating predictions into a Spotify-like recommendation system, or visualizing results through interactive dashboards.
+
+
+# Pre-Processing
+
+The Exploratory Data Analysis revealed intricate, comlpex relationships between the variables.
+Combined with our business understanding, we are able to carefully pick and calibrate the models
+we want to use for this important step of the treatment.
+
+Some univariate outliers were considered errors. A tempo of zero was treated as a missing
+value. Two positive loudness values were imputed as zero, which seems to be a "soft maximum"
+for the variable if we plot its distribution.
+
+## Missing data
+
+We were informed that the missing values were generated completely at random. Little's test
+confirms there is no evidence for the contrary.
+
+A very small amount of observations in the training set had less than half of the information, 
+and we decided to eliminate them.
+
+Imputation was carried in two steps:
+- Direct imputation of `audio_mode` by using `key`.
+- Simultaneous imputation of the rest with MICE.
+
+By using empirical data, we created a variable `prob_major`, which represents 
+$\Pr(\text{Audio Mode} = \text{Major}\ |\ Key)$. For the songs where key is known, we imputed
+`audio_mode` as Major if `prob_major > 0.5`; and for the songs with unknown key, `audio_mode` was
+imputed in the next step (MICE). We plan to use one of the two variables depending on the 
+nature of the model. For example, a linear model can use `prob_major` as a regressor instead
+of `audio_mode`, and naturally takes into account the uncertainty of the imputation.
+
+Lastly, we impute the rest of the variables using MICE with a custom set of predictor models and
+predictor matrix, tailored to the needs of each variable. Predictive Mean Matching (PMM) worked
+well for most variables, but we also used Random Forests and Lasso Regressions to capture
+relationships that PMM was not able to correctly predict.
+
+We validated the imputation by checking if all distributions were kept similar, and all
+known relationships between variables were respected. Two of the most difficult variables
+to impute were acousticness and loudness, but the result is outstanding:
+
+```{r}
+source("Bernat/missing_validation.R")
+imputation_scatterplot(loudness, acousticness)
+```
+
+## Outliers
+
+Detecting outliers was not a straightforward task. Some values may seem extraordinary, but aren't.
+A track that lasts 29 minutes looks like a mistake, but could very well be a classical piece. For this reason, we did not consider any univariate outliers and approached the problem from a multivariate
+perspective.
+
+We implemented a modified version of [Attribute wise learning for scoring outliers](https://cienciadedatos.net/documentos/67_deteccion_anomalias_also) (ALSO), which
+uses k-fold prediction, like the article suggests, to avoid predicting an outlier with a model
+trained on that same outlier. This algorithm takes into account the strong dependencies between variables, something distance based methods like Local Outlier Factor (LOF) or Heriarchical Clustering 
+do not directly use. 
+
+Additionally, we detected some clear outliers in the scatterplot between instrumentalness
+and speechiness. We manually weighted these with a custom formula. By combining the two,
+we assigned a weight to each observation to be used in models.
+
+```{r}
+readRDS("data/songs_outlied.RDS") |> 
+    ggplot(aes(x = instrumentalness, y = speechiness, color = 1 - outlier_weight)) +
+    geom_point(size = 2) +
+    scale_color_gradient(low = "black", high = "royalblue1") +
+    theme_minimal()
+```
+
