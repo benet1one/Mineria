@@ -331,8 +331,8 @@ we assigned a weight to each observation to be used in models.
 
 ```{r}
 readRDS("data/songs_outlied.RDS") |> 
-    ggplot(aes(x = instrumentalness, y = speechiness, color = 1 - outlier_weight)) +
-    geom_point(size = 2) +
+    ggplot(aes(x = instrumentalness, y = speechiness, color = outlier_weight)) +
+    geom_point(size = 1.6) +
     scale_color_gradient(low = "black", high = "royalblue1") +
     theme_minimal()
 ```
