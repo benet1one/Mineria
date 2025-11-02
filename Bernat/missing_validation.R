@@ -68,3 +68,6 @@ imputation_scatterplot(instrumentalness, speechiness)
 
 mean(songs$instrumentalness > 0, na.rm = TRUE)
 mean(songs_imp$instrumentalness > 0)
+
+table(songs$audio_mode) |> proportions()
+table(songs_imp$audio_mode) |> proportions()
