@@ -184,5 +184,6 @@ saveRDS(songs_all_imputed, "data/songs_all_imputed.RDS")
 hist(songs_test_imputed$song_popularity)
 
 songs_test_imputed |> 
-    select(ID, song_popularity) |> 
+    rename(id = ID) |> 
+    select(id, song_popularity) |> 
     write.csv("predictions/mice.csv", row.names = FALSE)
