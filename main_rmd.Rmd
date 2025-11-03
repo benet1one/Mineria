@@ -106,6 +106,8 @@ External Supporting sources:
 Our dataset consists of 13186 imputs of spotify tracks with 15 variables. From those, 3 are qualitative variables while 12 are quantitative variables.
 
 ***Probably some more explanation needed***
+Our dataset consists of 13186 imput tracks, each one described by 15 variables. Among those, 3 are qualitative variables, so the provide a categorical information, while the other 12 are quantitative (or numerical) and allow to catch the measurable characteristics of the tracks.
+The combination of all these components allow an analysis of factor that can result useful for the prediction of songs' popularity.
 
 ## Data source
 
