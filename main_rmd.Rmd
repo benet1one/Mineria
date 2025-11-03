@@ -7,7 +7,7 @@ author: |
   Rota, Davide  
   Tobella Jacomet, Pol  
   
-date: "2025-10-02"
+date: "2025-11-02"
 output:
   pdf_document: 
     latex_engine: xelatex
@@ -78,7 +78,8 @@ options(tinytex.verbose = TRUE)
 
 # Introduction
 
-In this paper we will analyze data related to spotify tracks, with the objective of determining a way to predict a song/track popularity in the site through information related to that track. ***Needs to be expanded a bit probably***
+In this document we will analyze data related to Spotify tracks, with the objective of determining a way to predict a song/track popularity in the site through information related to that track. ***Needs to be expanded a bit probably***
+The purpose of this document is to identify an effective method for the prediction of the popularity of songs or tracks on Spotify, using the available information for each item. This analysis relies on track-related data and employs different techniques to construct a synthetic indicator of popularity. The goal is to uncover potential patterns and factors that explain why certain songs become more popular than others.
 
 
 ## Link to Repository
