@@ -1,7 +1,7 @@
 
 source("reading.R")
-songs_imp <- readRDS("data/songs_imputed.RDS")
-songs <- songs |> filter(ID %in% songs_imp$ID)
+songs_imp <- readRDS("data/songs_all_imputed.RDS")
+songs <- songs_imp |> select(ID, training) |> left_join(songs_all, join_by(ID, training))
 where_imp <- is.na(songs) |> as_tibble()
 
 imputation_scatterplot <- function(x, y) {
@@ -23,8 +23,8 @@ imputation_scatterplot <- function(x, y) {
         paste("Imputed", names(imp_cols)[2]),
         "Imputed both"
     ))
-    
-    ggplot(songs_imp, aes(x = {{x}}, y = {{y}}, color = imp)) +
+
+    ggplot(songs_imp, aes(x = {{x}}, y = {{y}}, color = !!imp)) +
         geom_point(alpha = 0.4) +
         theme_minimal() +
         scale_color_manual(
@@ -71,3 +71,4 @@ mean(songs_imp$instrumentalness > 0)
 
 table(songs$audio_mode) |> proportions()
 table(songs_imp$audio_mode) |> proportions()
+
