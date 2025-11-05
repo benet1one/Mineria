@@ -20,7 +20,7 @@ oversample <- function(s, n = 1000) {
         mutate(pair = 1:n(), .before = i1) |> 
         mutate(w = 1 / (distance + quantile(distance, 0.1)))
     
-    pairs <- slice_sample(pair_distances, n = n, weight_by = w) |> 
+    pairs <- slice_sample(pair_distances, n = n - nrow(s), weight_by = w) |> 
         select(pair, i1, i2) |> 
         tidyr::pivot_longer(i1:i2, values_to = "i") |> 
         select(-name)
@@ -44,8 +44,9 @@ oversample <- function(s, n = 1000) {
             across(where(is.double), function(x) mean(x)),
         )
     
-    combined |> 
-        select(-i, -pair, -cat_from)
+    s$..i <- NULL
+    new_obs <- combined |> select(-i, -pair, -cat_from)
+    bind_rows(s, new_obs)
 }
 
 songs_oversampled <- songs |> 
