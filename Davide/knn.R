@@ -3,41 +3,38 @@ library(dplyr)
 library(ggplot2)
 library(FNN)
 
-source("reading.R")
-
-songs <- songs[complete.cases(songs), ]
+songs <- readRDS("data/songs_imputed.RDS")
+songs_oversampled <- readRDS("data/songs_oversampled.RDS")
 
 distance_daisy <- songs |>
-  select(-ID, -song_popularity, -key) |>
-  # mutate(loudness = scale(loudness)[, 1]) |>
-  # mutate(tempo = scale(tempo)[, 1]) |>
-  # fastDummies::dummy_cols(remove_selected_columns = TRUE) |>
-  cluster::daisy("gower")
+    slice_sample(n = 4000) |> 
+    select(-ID, -song_popularity, -key) |>
+    cluster::daisy("gower")
 
 distance_mat <- as.matrix(distance_daisy)
 
-k_exploration <- combn(nrow(songs), 2) |>
-  t() |>
-  as.data.frame() |>
-  as_tibble() |>
-  rowwise() |>
-  mutate(
-    distance = distance_mat[V1, V2],
-    pop_diff = abs(
-      songs$song_popularity[V1] - songs$song_popularity[V2]
-    )
-  ) |>
-  ungroup() |>
-  mutate(distance_cat = cut(distance, breaks = 10)) |>
-  print()
+k_exploration <- tibble(
+    V1 = sample.int(nrow(distance_mat)),
+    V2 = sample.int(nrow(distance_mat))
+) |> 
+    rowwise() |>
+    mutate(
+        distance = distance_mat[V1, V2],
+        pop_diff = abs(
+            songs$song_popularity[V1] - songs$song_popularity[V2]
+        )
+    ) |>
+    ungroup() |>
+    mutate(distance_cat = cut(distance, breaks = 10)) |>
+    print()
 
 
 ggplot(k_exploration, aes(x = distance, y = pop_diff)) +
-  geom_point(alpha = 0.1) +
-  geom_smooth()
+    geom_point(alpha = 0.1) +
+    geom_smooth()
 
 ggplot(k_exploration, aes(x = distance_cat, y = pop_diff)) +
-  geom_boxplot()
+    geom_boxplot()
 
 # --- Divisione train/test per il dataset songs ---
 
@@ -49,46 +46,38 @@ target_col <- "song_popularity"
 # Indice della colonna target
 ind_col <- which(names(songs) == target_col)
 
-# Split 70/30
-default_idx <- sample(nrow(songs), nrow(songs) * 0.7)
-train <- songs[default_idx, ]
-test <- songs[-default_idx, ]
+songs_num <- songs_oversampled |>  
+    select(-ID) |> 
+    # Applica la standardizzazione
+    mutate(across(.fns = scale, c(where(is.numeric), -song_popularity))) |> 
+    # Conversione di tutte le features in numeriche (necessario per KNN)
+    fastDummies::dummy_columns() |> 
+    mutate(ID = songs_oversampled$ID, .before = 1)
+
+
+test <- songs_num |> 
+    # Filter out oversampled pairs
+    filter(!stringr::str_detect(ID, "-")) |> 
+    group_by(time_signature) |> 
+    slice_sample(prop = 0.3) |> 
+    ungroup()
+
+train <- songs_num |> 
+    filter(!is.element(ID, test$ID))
+
+test <- test |> select(where(is.numeric))
+train <- train |> select(where(is.numeric))
 
 # Separazione features e target
-X_train <- train[, -ind_col]
-X_test  <- test[, -ind_col]
-y_train <- train[, ind_col]
-y_test  <- test[, ind_col]
+X_train <- train |> select(-song_popularity)
+X_test <- test |> select(-song_popularity)
 
-# Conversione di tutte le features in numeriche (necessario per KNN)
-X_train <- data.frame(lapply(X_train, as.numeric))
-X_test  <- data.frame(lapply(X_test, as.numeric))
-
-# Salva nomi colonne
-cols <- colnames(X_train)
-
-# Calcola media e sd per ogni variabile del training set
-means <- sapply(X_train, mean, na.rm = TRUE)
-sds   <- sapply(X_train, sd, na.rm = TRUE)
-
-# Applica la standardizzazione
-X_train <- scale(X_train, center = means, scale = sds)
-X_test  <- scale(X_test, center = means, scale = sds)
-
-# Ritorna a data.frame con nomi
-X_train <- as.data.frame(X_train)
-X_test  <- as.data.frame(X_test)
-colnames(X_train) <- cols
-colnames(X_test) <- cols
+y_train <- train$song_popularity
+y_test <- test$song_popularity
 
 # --- Regressione KNN per song_popularity ---
 
-# Conversione target in numerico puro
-y_train <- as.numeric(unlist(y_train))
-y_test  <- as.numeric(unlist(y_test))
-
 # Prova KNN
-
 pred <- FNN::knn.reg(
   train = X_train,
   test  = X_test,
@@ -96,7 +85,7 @@ pred <- FNN::knn.reg(
   k     = 5
 )
 
-head(pred$pred)#
+head(pred$pred)
 
 # Calcola RMSE (Root Mean Squared Error)
 rmse <- sqrt(mean((pred$pred - y_test)^2))
@@ -173,7 +162,7 @@ df_rmse <- data.frame(
 )
 
 library(tidyr)
-df_rmse_long <- df_rmse %>%
+df_rmse_long <- df_rmse |> 
   pivot_longer(cols = c(RMSE_test, RMSE_train),
                names_to = "tipo", values_to = "RMSE")
 
