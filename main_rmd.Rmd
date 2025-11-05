@@ -276,7 +276,7 @@ In a future extension, deployment activities could involve automating model retr
 
 # Pre-Processing
 
-The Exploratory Data Analysis revealed intricate, comlpex relationships between the variables.
+The Exploratory Data Analysis revealed intricate, complex relationships between the variables.
 Combined with our business understanding, we are able to carefully pick and calibrate the models
 we want to use for this important step of the treatment.
 
@@ -340,3 +340,20 @@ readRDS("data/songs_outlied.RDS") |>
     theme_minimal()
 ```
 
+\newpage
+## KNN and Naive Bayes
+In this step the aim is to find some algorithms for the regression task, considering two different strategies as initial approach.
+
+#KNN
+The first method applied is K-Nearest Neighbors (KNN) in a regression context.
+Initially, the cleaned dataset was divided into a training and a test set, in order to obtain reliable results and assess the model’s ability to generalize to unseen data. The next step involved defining the features and the numerical target variable within these subsets.
+To ensure good KNN performance, all features were converted to numerical format and standardized, since differences in scale could otherwise strongly affect the computation of distances. The model was then trained and used to make predictions, which were evaluated using one of the most appropriate KPIs for regression tasks, the Root Mean Squared Error (RMSE), along with the correlation between predicted and actual values.
+Finally, the parameter k (number of neighbors) was optimized based on the RMSE results, with the best performance obtained for k = 5.
+This analysis indicates that KNN can be a viable method for further exploration, although it performs satisfactorily only for specific values of k and is computationally expensive. Therefore, testing alternative models might be advisable for improved efficiency and scalability.
+
+PLOT OF KPI/k
+
+# Naive Bayes
+At first glance, the use of the Naive Bayes algorithm appeared to be a forced approach for predicting song popularity. This mainly because Naive Bayes is designed for categorical target variables, whereas our target (song popularity) is continuous and numerical in nature.
+To make the method applicable, we transformed the target variable into three discrete categories representing low, medium, and high popularity levels. However, after applying the Naive Bayes model, the results were unsatisfactory: the predictions were heavily biased toward the “high” category, leading to an imbalanced outcome. Furthermore, the accuracy derived from the corresponding confusion matrix was quite low, indicating that Naive Bayes is not well suited for this regression-oriented problem.
+"Accuracy: 0.33333"

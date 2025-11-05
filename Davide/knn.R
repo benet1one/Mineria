@@ -149,6 +149,7 @@ knn_test_rmse <- sapply(
 
 # --- Determina il k con errore minimo ---
 best_k <- k_values[which.min(knn_test_rmse)]
+best_k
 
 cat("Miglior k:", best_k, "\n")
 cat("RMSE train:", knn_train_rmse[which.min(knn_test_rmse)], "\n")

@@ -45,7 +45,7 @@ print(conf_mat)
 
 # --- KPI principali ---
 cat("\nAccuracy:", conf_mat$overall["Accuracy"], "\n")
-cat("Kappa:", conf_mat$overall["Kappa"], "\n")
+#cat("Kappa:", conf_mat$overall["Kappa"], "\n")
 
 # --- Visualizzazione: matrice di confusione ---
 ggplot(as.data.frame(conf_mat$table), aes(Reference, Prediction, fill = Freq)) +
