@@ -346,10 +346,10 @@ In this step the aim is to find some algorithms for the regression task, conside
 
 #KNN
 The first method applied is K-Nearest Neighbors (KNN) in a regression context.
-Initially, the cleaned dataset was divided into a training and a test set, in order to obtain reliable results and assess the model’s ability to generalize to unseen data. The next step involved defining the features and the numerical target variable within these subsets.
+Initially, the cleaned and overampled dataset was divided into a training and a test set, in order to obtain reliable results and assess the model’s ability to generalize to unseen data. The next step involved defining the features and the numerical target variable within these subsets.
 To ensure good KNN performance, all features were converted to numerical format and standardized, since differences in scale could otherwise strongly affect the computation of distances. The model was then trained and used to make predictions, which were evaluated using one of the most appropriate KPIs for regression tasks, the Root Mean Squared Error (RMSE), along with the correlation between predicted and actual values.
-Finally, the parameter k (number of neighbors) was optimized based on the RMSE results, with the best performance obtained for k = 5.
-This analysis indicates that KNN can be a viable method for further exploration, although it performs satisfactorily only for specific values of k and is computationally expensive. Therefore, testing alternative models might be advisable for improved efficiency and scalability.
+Finally, the parameter k (number of neighbors) was optimized based on the RMSE results, with the best performance obtained for k = 25, the highest possible value of k.
+This analysis indicates that KNN is a computationally expensive method for further exploration, because the KPI gets better as k increases. Therefore, testing alternative models might be advisable for improved efficiency and scalability.
 
 PLOT OF KPI/k
 
