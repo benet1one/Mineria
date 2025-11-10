@@ -3,74 +3,54 @@ library(dplyr)
 library(ggplot2)
 library(FNN)
 
-songs <- readRDS("data/songs_imputed.RDS")
-songs_oversampled <- readRDS("data/songs_oversampled.RDS")
-
-distance_daisy <- songs |>
-    slice_sample(n = 4000) |> 
-    select(-ID, -song_popularity, -key) |>
-    cluster::daisy("gower")
-
-distance_mat <- as.matrix(distance_daisy)
-
-k_exploration <- tibble(
-    V1 = sample.int(nrow(distance_mat)),
-    V2 = sample.int(nrow(distance_mat))
-) |> 
-    rowwise() |>
-    mutate(
-        distance = distance_mat[V1, V2],
-        pop_diff = abs(
-            songs$song_popularity[V1] - songs$song_popularity[V2]
-        )
-    ) |>
-    ungroup() |>
-    mutate(distance_cat = cut(distance, breaks = 10)) |>
-    print()
-
-
-ggplot(k_exploration, aes(x = distance, y = pop_diff)) +
-    geom_point(alpha = 0.1) +
-    geom_smooth()
-
-ggplot(k_exploration, aes(x = distance_cat, y = pop_diff)) +
-    geom_boxplot()
-
 # --- Divisione train/test per il dataset songs ---
 
 set.seed(123)  # per riproducibilità
+songs <- readRDS("data/songs_imputed.RDS")
+
+# Feature selection and weighting in knn_weight_tests.R
+knn_weights <- readRDS("knn_weights.RDS")
+knn_weights
+
+songs_weighted <- songs |> 
+    select(ID, liveness, danceability, audio_valence, energy, acousticness, speechiness)
+
+for (v in names(songs_weighted)) {
+    if (v == "ID")
+        next
+    weight <- knn_weights$weight[knn_weights$variable == v]
+    songs_weighted[[v]] <- weight * scale(songs_weighted[[v]]) [, 1]
+}
+
+songs_num <- songs |> 
+    rows_update(songs_weighted, by = "ID") |> 
+    select(liveness, danceability, audio_valence, energy, acousticness, speechiness, 
+           key, audio_mode, time_signature, song_popularity) |> 
+    # Conversione di tutte le features in numeriche (necessario per KNN)
+    fastDummies::dummy_columns() |> 
+    # Weighting Categorical Variables
+    mutate(across(starts_with("key_"), \(key) sqrt(1.65) * key)) |> 
+    mutate(across(starts_with("audio_mode_"), \(mode) sqrt(0.27) * mode)) |> 
+    mutate(ID = songs$ID, .before = 1)
+
+test <- songs_num |> 
+    group_by(audio_mode) |> 
+    slice_sample(prop = 0.3) |> 
+    ungroup()
+
+train <- songs_num |> rows_delete(test, by = "ID") |> suppressMessages()
+test  <- test  |> select(where(is.numeric), -ID)
+train <- train |> select(where(is.numeric), -ID)
 
 # Nome della colonna target
 target_col <- "song_popularity"
 
 # Indice della colonna target
-ind_col <- which(names(songs) == target_col)
-
-songs_num <- songs_oversampled |>  
-    select(-ID) |> 
-    # Applica la standardizzazione
-    mutate(across(.fns = scale, c(where(is.numeric), -song_popularity))) |> 
-    # Conversione di tutte le features in numeriche (necessario per KNN)
-    fastDummies::dummy_columns() |> 
-    mutate(ID = songs_oversampled$ID, .before = 1)
-
-
-test <- songs_num |> 
-    # Filter out oversampled pairs
-    filter(!stringr::str_detect(ID, "-")) |> 
-    group_by(time_signature) |> 
-    slice_sample(prop = 0.3) |> 
-    ungroup()
-
-train <- songs_num |> 
-    filter(!is.element(ID, test$ID))
-
-test <- test |> select(where(is.numeric))
-train <- train |> select(where(is.numeric))
+ind_col <- which(names(songs_num) == target_col)
 
 # Separazione features e target
-X_train <- train |> select(-song_popularity)
-X_test <- test |> select(-song_popularity)
+X_train <- train[, -ind_col]
+X_test <- test[, -ind_col]
 
 y_train <- train$song_popularity
 y_test <- test$song_popularity
@@ -79,98 +59,146 @@ y_test <- test$song_popularity
 
 # Prova KNN
 pred <- FNN::knn.reg(
-  train = X_train,
-  test  = X_test,
-  y     = y_train,
-  k     = 5
-)
+    train = X_train,
+    test  = X_test,
+    y     = y_train,
+    k     = 5
+)$pred
 
-head(pred$pred)
+head(pred)
 
-# Calcola RMSE (Root Mean Squared Error)
-rmse <- sqrt(mean((pred$pred - y_test)^2))
-cat("RMSE:", rmse, "\n")
-
-# Correlazione tra predetto e reale
-correlation <- cor(pred$pred, y_test)
-cat("Correlazione:", correlation, "\n")
-
-# --- Funzione per calcolare RMSE ---
-rmse <- function(actual, predicted) {
-  sqrt(mean((actual - predicted)^2))
+# --- Funzione per calcolare MAPE ---
+mape <- function(actual, predicted) {
+    mean(abs(predicted - actual) / pmax(actual, 1))
 }
 
-# --- Funzione per eseguire KNN e restituire RMSE ---
+# Calcola mape (Mean absolute percentage error)
+cat("MAPE:", mape(y_test, pred), "\n")
+
+# Correlazione tra predetto e reale
+correlation <- cor(pred, y_test)
+cat("Correlazione:", correlation, "\n")
+
+
+# --- Funzione per eseguire KNN e restituire MAPE ---
 make_knn_pred <- function(k = 1, training, predicting, 
                           valueTrain, valueTrue) {
-  pred <- FNN::knn.reg(
-    train = training,
-    test  = predicting,
-    y     = valueTrain,
-    k     = k
-  )$pred
-  
-  rmse(actual = valueTrue, predicted = pred)
+    pred <- FNN::knn.reg(
+        train = training,
+        test  = predicting,
+        y     = valueTrain,
+        k     = k
+    )$pred
+    
+    mape(actual = valueTrue, predicted = pred)
 }
 
 # --- Valori di k da testare ---
-k_values <- c(1, 5, 10, 25)
+k_values <- c(1, 3, 5, 7, 9, 25)
 
-# --- Calcolo RMSE sul TRAIN (quanto bene apprende sui dati noti) ---
-knn_train_rmse <- sapply(
-  k_values,
-  make_knn_pred,
-  training   = X_train,
-  predicting = X_train,
-  valueTrain = y_train,
-  valueTrue  = y_train
+# --- Calcolo MAPE sul TRAIN (quanto bene apprende sui dati noti) ---
+knn_train_mape <- sapply(
+    k_values,
+    make_knn_pred,
+    training   = X_train,
+    predicting = X_train,
+    valueTrain = y_train,
+    valueTrue  = y_train
 )
 
-# --- Calcolo RMSE sul TEST (quanto generalizza) ---
-knn_test_rmse <- sapply(
-  k_values,
-  make_knn_pred,
-  training   = X_train,
-  predicting = X_test,
-  valueTrain = y_train,
-  valueTrue  = y_test
+# --- Calcolo MAPE sul TEST (quanto generalizza) ---
+knn_test_mape <- sapply(
+    k_values,
+    make_knn_pred,
+    training   = X_train,
+    predicting = X_test,
+    valueTrain = y_train,
+    valueTrue  = y_test
 )
 
 # --- Determina il k con errore minimo ---
-best_k <- k_values[which.min(knn_test_rmse)]
+best_k <- k_values[which.min(knn_test_mape)]
 best_k
 
 cat("Miglior k:", best_k, "\n")
-cat("RMSE train:", knn_train_rmse[which.min(knn_test_rmse)], "\n")
-cat("RMSE test :", min(knn_test_rmse), "\n")
+cat("MAPE train:", knn_train_mape[which.min(knn_test_mape)], "\n")
+cat("MAPE test :", min(knn_test_mape), "\n")
 
-plot(k_values, knn_test_rmse, type = "b", pch = 19, col = "blue",
-     main = "RMSE KNN - Dataset Songs",
+plot(k_values, knn_test_mape, type = "b", pch = 19, col = "blue",
+     main = "MAPE KNN - Dataset Songs",
      xlab = "k (numero di vicini)",
-     ylab = "RMSE (test set)")
+     ylab = "MAPE (test set)")
 
 final_pred <- FNN::knn.reg(
-  train = X_train,
-  test  = X_test,
-  y     = y_train,
-  k     = best_k
+    train = X_train,
+    test  = X_test,
+    y     = y_train,
+    k     = best_k
 )$pred
 
-df_rmse <- data.frame(
-  k = k_values,
-  RMSE_test = knn_test_rmse,
-  RMSE_train = knn_train_rmse
+df_mape <- data.frame(
+    k = k_values,
+    mape_test = knn_test_mape,
+    mape_train = knn_train_mape
 )
 
 library(tidyr)
-df_rmse_long <- df_rmse |> 
-  pivot_longer(cols = c(RMSE_test, RMSE_train),
-               names_to = "tipo", values_to = "RMSE")
+df_mape_long <- df_mape |> 
+    pivot_longer(cols = c(mape_test, mape_train),
+                 names_to = "tipo", values_to = "mape")
 
-ggplot(df_rmse_long, aes(x = factor(k), y = RMSE, fill = tipo)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  labs(title = "RMSE per diversi valori di k",
-       x = "Numero di vicini (k)",
-       y = "RMSE") +
-  scale_fill_manual(values = c("steelblue", "orange")) +
-  theme_minimal()
+ggplot(df_mape_long, aes(x = factor(k), y = mape, fill = tipo)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(title = "mape per diversi valori di k",
+         x = "Numero di vicini (k)",
+         y = "mape") +
+    scale_fill_manual(values = c("steelblue", "orange")) +
+    theme_minimal()
+
+
+# --- Make the prediction with the full training set ---
+
+songs_full <- readRDS("data/songs_all_imputed.RDS") |> 
+    mutate(ID = if_else(training, paste("training", ID), paste("test", ID)))
+
+songs_weighted <- songs_full |> 
+    select(ID, liveness, danceability, audio_valence, energy, acousticness, speechiness)
+
+for (v in names(songs_weighted)) {
+    if (v == "ID")
+        next
+    weight <- knn_weights$weight[knn_weights$variable == v]
+    songs_weighted[[v]] <- weight * scale(songs_weighted[[v]]) [, 1]
+}
+
+songs_num <- songs_full |>  
+    rows_update(songs_weighted, by = "ID") |> 
+    select(liveness, danceability, audio_valence, energy, acousticness, speechiness, 
+           key, audio_mode, time_signature, song_popularity, training) |> 
+    # Conversione di tutte le features in numeriche (necessario per KNN)
+    fastDummies::dummy_columns() |> 
+    # Weighting Categorical Variables
+    mutate(across(starts_with("key_"), \(key) sqrt(1.65) * key)) |> 
+    mutate(across(starts_with("audio_mode_"), \(mode) sqrt(0.27) * mode)) |> 
+    mutate(ID = songs_full$ID, .before = 1)
+
+train <- songs_num |> filter( training) |> select(where(is.numeric))
+test  <- songs_num |> filter(!training) |> select(where(is.numeric))
+
+y_train <- train |> _$song_popularity
+X_train <- train |> select(-song_popularity)
+X_test  <- test  |> select(-song_popularity)
+
+pred <- FNN::knn.reg(
+    train = X_train,
+    test = X_test,
+    y = y_train,
+    k = best_k
+)$pred
+
+prediction <- tibble(
+    id = 1:length(pred),
+    song_popularity = as.integer(pred)
+)
+
+write.csv(prediction, file = "predictions/knn.csv", row.names = FALSE)
