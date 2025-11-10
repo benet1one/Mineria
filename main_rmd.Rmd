@@ -82,11 +82,6 @@ In this document we will analyze data related to Spotify tracks, with the object
 The purpose of this document is to identify an effective method for the prediction of the popularity of songs or tracks on Spotify, using the available information for each item. This analysis relies on track-related data and employs different techniques to construct a synthetic indicator of popularity. The goal is to uncover potential patterns and factors that explain why certain songs become more popular than others.
 
 
-## Link to Repository
-
-https://benet1one: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@github.com/benet1one/Mineria
-
-
 # Motivation
 
 Our objective is to develop a regression model capable of predicting the popularity of songs using musical attributes and associated metadata. This project aims to identify patterns and characteristics that explain why certain songs achieve higher levels of popularity, enabling streaming platforms to make more informed decisions regarding recommendations and playlist curation.
