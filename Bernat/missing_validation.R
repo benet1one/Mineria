@@ -1,4 +1,5 @@
 
+library(ggplot2)
 source("reading.R")
 songs_imp <- readRDS("data/songs_all_imputed.RDS")
 songs <- songs_imp |> select(ID, training) |> left_join(songs_all, join_by(ID, training))
