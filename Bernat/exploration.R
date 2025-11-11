@@ -1,4 +1,5 @@
 
+library(ggplot2)
 source("reading.R")
 par(mfcol = c(1, 1))
 
@@ -19,11 +20,11 @@ songs |>
 
 songs |> 
     filter(!is.na(time_signature), !is.na(audio_mode)) |>
-    select(acousticness, danceability, energy, loudness, speechiness, time_signature, audio_valence, audio_mode) |> 
+    select(acousticness, danceability, time_signature, audio_mode) |> 
     tidyr::pivot_longer(!c(time_signature, audio_mode), names_to = "variable") |> 
     ggplot(aes(y = value, x = time_signature, color = audio_mode)) +
-    facet_wrap(~variable, scales = "free") +
-    geom_boxplot(fatten = 1) +
+    facet_wrap(~variable, scales = "free_y") +
+    geom_boxplot(fatten = 1, outliers = FALSE) +
     theme_minimal()
 
 lognorm_loudness <- log(-songs$loudness + 1)
