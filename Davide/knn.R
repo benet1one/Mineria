@@ -69,7 +69,8 @@ head(pred)
 
 # --- Funzione per calcolare MAPE ---
 mape <- function(actual, predicted) {
-    mean(abs(predicted - actual) / pmax(actual, 1))
+    is_zero <- (actual == 0)
+    mean((abs(actual - predicted) + is_zero) / (actual + is_zero))
 }
 
 # Calcola mape (Mean absolute percentage error)
