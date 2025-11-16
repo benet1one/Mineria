@@ -1,32 +1,8 @@
 
 library(dplyr)
+source("KPI.R")
 
 songs <- readRDS("data/songs_all_imputed.RDS")
-
-weighted_mape <- function(actual, predicted, weights = rep(1, length(actual))) {
-    is_zero <- (actual == 0)
-    weighted.mean(
-        (abs(actual - predicted) + is_zero) / (actual + is_zero),
-        w = weights
-    )
-}
-
-minimize_weighted_mape <- function(draws, weights = rep(1, length(draws))) {
-    candidates <- 0:100
-    candidate_mape <- sapply(candidates, function(pred) 
-        weighted_mape(actual = draws, predicted = pred, weights = weights)
-    )
-    candidates[which.min(candidate_mape)]
-}
-
-minimize_weighted_mape <- function(draws, weights = rep(1, length(draws))) {
-    opt <- optimise(
-        \(predicted) weighted_mape(actual = draws, predicted = predicted, weights = weights),
-        interval = c(0, 100)
-    )
-    
-    opt$minimum
-}
 
 bayesian_knn <- function(x_train, y_train, x_test, k = 50, weight_multiplier = 5.0) {
     nn <- FNN::knnx.index(
