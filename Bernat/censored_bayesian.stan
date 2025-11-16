@@ -9,21 +9,37 @@ data {
     array[N] real<lower=0, upper=100> popularity;
     
     // Design Matrix
-    int<lower=0> k;
-    matrix[N, k] x;
+    int<lower=0> k_numeric;
+    int<lower=0> k_categorical;
+    matrix[N, k_numeric] x_numeric;
+    matrix[N, k_categorical] x_categorical;
 }
 parameters {
-    // Coeficients
-    vector[k] beta;
+    // Optimal x
+    vector<lower=-3, upper=+3>[k_numeric] optimal_x;
+    // Coefficients
+    real constant;
+    vector<lower=0>[k_numeric] beta;
+    vector[k_categorical] gamma;
     
-    // Deviation function coefficients.
+    // Standard deviation function coefficients.
     real<lower=0.01> s0;
     real<lower=0.01> s1;
 }
 model {
+    // Optimal x prior and x transformation
+    optimal_x ~ normal(0, 1);
+    
+    matrix[N, k_numeric] x_transformed;
+    for (j in 1:k_numeric) {
+        vector[N] xj = x_numeric[, j];
+        real oj = optimal_x[j];
+        x_transformed[, j] = (xj - oj).^2;
+    }
+    
     // Expected values
-    vector[N] mu = x * beta;
-    // Standard deviation
+    vector[N] mu = constant + (x_categorical * gamma) - (x_numeric * beta);
+    // Standard deviation function.
     vector[N] sigma = s0 + s1 * fmax(mu, 0);
     
     // Positive
