@@ -90,9 +90,15 @@ mape_method <- list(
         }
     },
     eval = function(y, wt, parms) {
+        full_y <- parms$full_response
+        full_wt <- parms$full_weights * parms$prediction_safety
+        
+        y <- c(y, full_y)
+        wt <- c(wt, full_wt)
+        
         prediction <- minimize_weighted_mape(y, weights = wt)
-        w_mape <- weighted_mape(actual = y, predicted = prediction, weights = wt)
-        list(label = prediction, deviance = w_mape)
+        loss <- weighted_mape(actual = y, predicted = prediction, weights = wt)
+        list(label = prediction, deviance = loss)
     }
 )
 
