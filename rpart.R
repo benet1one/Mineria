@@ -100,8 +100,13 @@ tree_custom <- rpart::rpart(
     formula = formula,
     data = train,
     method = mape_method,
-    parms = list(n_splits_continuous = 3),
     weights = train$outlier_weight,
+    parms = list(
+        n_splits_continuous = 3,
+        full_response = train$song_popularity,
+        full_weights = train$outlier_weight,
+        prediction_safety = 0.5
+    ),
     control = rpart::rpart.control(
         minbucket = 50,
         maxdepth = 8,
@@ -111,7 +116,6 @@ tree_custom <- rpart::rpart(
 
 tree_custom
 predicted_custom <- predict(tree_custom, test)
-
 
 models <- tibble(
     number_4 = 4,
@@ -126,19 +130,21 @@ models <- tibble(
     ) |> 
     mutate(
         predicted_capped_4 = pmin(predicted, 4),
+        predicted_capped_5 = pmin(predicted, 5),
         predicted_capped_6 = pmin(predicted, 6),
-        predicted_capped_8 = pmin(predicted, 8),
+        predicted_capped_7 = pmin(predicted, 7),
+        predicted_capped_8 = pmin(predicted, 8)
     ) |> 
     rename(predicted_uncapped = predicted) |> 
     tidyr::pivot_longer(
         starts_with("predicted"), 
-        names_to = "cap", 
+        names_to = "modified", 
         names_prefix = "predicted_", 
         values_to = "predicted"
     )
 
 models |> 
-    group_by(model, cap) |> 
+    group_by(model, modified) |> 
     summarise(
         MAPE = mape(actual = test$song_popularity, predicted = predicted),
         .groups = "drop"
@@ -148,7 +154,7 @@ models |>
     print()
 
 
-# Custom Tree Capped at 6 gives consistently good results, 
+# Custom Tree Capped at 5 gives consistently good results, 
 # although ANOVA Capped at 4 beats it sometimes
 
 # Train using the full dataset
@@ -156,9 +162,14 @@ tree_custom_full <- rpart::rpart(
     formula = formula,
     data = songs,
     method = mape_method,
-    # Increase n_splits for continuous variables
-    parms = list(n_splits_continuous = 5),
     weights = songs$outlier_weight,
+    # Increase n_splits for continuous variables
+    parms = list(
+        n_splits_continuous = 3,
+        full_response = songs$song_popularity,
+        full_weights = songs$outlier_weight,
+        prediction_safety = 0.5
+    ),
     control = rpart::rpart.control(
         minbucket = 50,
         maxdepth = 8,
@@ -170,12 +181,12 @@ songs_test <- readRDS("data/songs_test_imputed.RDS")
 final_prediction <- tibble(
     id = songs_test$ID,
     song_popularity = predict(tree_custom_full, songs_test) |> 
-        pmin(6) |> 
+        pmin(5) |> 
         round()
 )
 
 write.csv(
     final_prediction, 
-    file = "predictions/custom_tree.csv", 
+    file = "predictions/custom_tree_correct.csv", 
     row.names = FALSE
 )
