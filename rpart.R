@@ -1,0 +1,189 @@
+
+library(dplyr)
+source("KPI.R")
+
+songs <- readRDS("data/songs_outlied.RDS")
+train <- songs |> slice_sample(prop = 0.7)
+test <- songs |> rows_delete(train, by = "ID") |> suppressMessages()
+
+formula <- song_popularity ~ 
+    loudness + acousticness + key + tempo + song_duration_ms + 
+    danceability + energy + audio_valence + audio_mode
+
+# cat("\nWorst MAPE =", mape(test$song_popularity, predicted = 4))
+# max_prediction <- 10
+
+# Default Regression Loss Function: ANOVA ------------------------------
+
+tree_anova <- rpart::rpart(
+    formula = formula,
+    data = train,
+    method = "anova",
+    weights = train$outlier_weight,
+    control = rpart::rpart.control(
+        minbucket = 20,
+        maxdepth = 8,
+        cp = -1
+    )
+)
+
+tree_anova
+predicted_anova <- predict(tree_anova, test)
+
+
+# Defining new loss function for rpart: MAPE -------------------------
+
+mape_method <- list(
+    init = function(y, offset, parms, wt) {
+        summary_fun <- function(yval, dev, wt, ylevel, digits) {
+            paste("Prediction =", signif(yval, digits), "| MAPE =", signif(dev, digits))
+        }
+        
+        list(y = y, parms = parms, numresp = 1, numy = 1, summary = summary_fun)
+    },
+    split = function(y, wt, x, parms, continuous) {
+        if (continuous) {
+            # Continuous x
+            n <- length(y)
+            loss_l <- rep(Inf, n - 1)
+            loss_r <- rep(Inf, n - 1)
+            
+            p_splits <- ppoints(parms$n_splits_continuous, a = 0)
+            i_splits <- round(n * p_splits)
+            
+            for (i in i_splits) {
+                l <- 1:i
+                r <- (i + 1):n
+                
+                loss_l[i] <- minimize_weighted_mape(
+                    draws = y[l], weights = wt[l], objective_value = TRUE
+                )
+                loss_r[i] <- minimize_weighted_mape(
+                    draws = y[r], weights = wt[r], objective_value = TRUE
+                )
+            }
+            
+            list(
+                goodness = (1/loss_l)^2 + (1/loss_r)^2, 
+                direction = rep(-1, n-1)
+            )
+            
+        } else {
+            # Categorical x
+            ux <- sort(unique(x))
+            k <- length(ux)
+            
+            medians <- tapply(y, x, median)
+            ord <- order(medians)
+
+            loss_l <- integer(k - 1)
+            loss_r <- integer(k - 1)
+            
+            for (i in seq_len(k - 1)) {
+                l <- x %in% ux[ord][1:i]
+                r <- !l
+
+                loss_l[i] <- minimize_weighted_mape(
+                    draws = y[l], weights = wt[l], objective_value = TRUE
+                )
+                loss_r[i] <- minimize_weighted_mape(
+                    draws = y[r], weights = wt[r], objective_value = TRUE
+                )
+            }
+            
+            list(
+                goodness = (1/loss_l)^2 + (1/loss_r)^2, 
+                direction = ux[ord]
+            )
+        }
+    },
+    eval = function(y, wt, parms) {
+        prediction <- minimize_weighted_mape(y, weights = wt)
+        w_mape <- weighted_mape(actual = y, predicted = prediction, weights = wt)
+        list(label = prediction, deviance = w_mape)
+    }
+)
+
+tree_custom <- rpart::rpart(
+    formula = formula,
+    data = train,
+    method = mape_method,
+    parms = list(n_splits_continuous = 3),
+    weights = train$outlier_weight,
+    control = rpart::rpart.control(
+        minbucket = 50,
+        maxdepth = 8,
+        cp = -1
+    )
+)
+
+tree_custom
+predicted_custom <- predict(tree_custom, test)
+
+
+models <- tibble(
+    number_4 = 4,
+    anova_tree = predicted_anova,
+    custom_tree = predicted_custom,
+    ID = test$ID,
+) |> 
+    tidyr::pivot_longer(
+        !ID, 
+        names_to = "model", 
+        values_to = "predicted"
+    ) |> 
+    mutate(
+        predicted_capped_4 = pmin(predicted, 4),
+        predicted_capped_6 = pmin(predicted, 6),
+        predicted_capped_8 = pmin(predicted, 8),
+    ) |> 
+    rename(predicted_uncapped = predicted) |> 
+    tidyr::pivot_longer(
+        starts_with("predicted"), 
+        names_to = "cap", 
+        names_prefix = "predicted_", 
+        values_to = "predicted"
+    )
+
+models |> 
+    group_by(model, cap) |> 
+    summarise(
+        MAPE = mape(actual = test$song_popularity, predicted = predicted),
+        .groups = "drop"
+    ) |> 
+    distinct(model, MAPE, .keep_all = TRUE) |> 
+    arrange(MAPE) |> 
+    print()
+
+
+# Custom Tree Capped at 6 gives consistently good results, 
+# although ANOVA Capped at 4 beats it sometimes
+
+# Train using the full dataset
+tree_custom_full <- rpart::rpart(
+    formula = formula,
+    data = songs,
+    method = mape_method,
+    # Increase n_splits for continuous variables
+    parms = list(n_splits_continuous = 5),
+    weights = songs$outlier_weight,
+    control = rpart::rpart.control(
+        minbucket = 50,
+        maxdepth = 8,
+        cp = -1
+    )
+)
+
+songs_test <- readRDS("data/songs_test_imputed.RDS")
+final_prediction <- tibble(
+    id = songs_test$ID,
+    song_popularity = predict(tree_custom_full, songs_test) |> 
+        pmin(6) |> 
+        round()
+)
+
+write.csv(
+    final_prediction, 
+    file = "predictions/custom_tree.csv", 
+    row.names = FALSE
+)
