@@ -91,7 +91,9 @@ mape_method <- list(
     },
     eval = function(y, wt, parms) {
         full_y <- parms$full_response
-        full_wt <- parms$full_weights * parms$prediction_safety
+        full_wt <- parms$full_weights * 
+            parms$prediction_safety * 
+            length(y) / length(full_y)
         
         y <- c(y, full_y)
         wt <- c(wt, full_wt)
@@ -111,7 +113,7 @@ tree_custom <- rpart::rpart(
         n_splits_continuous = 3,
         full_response = train$song_popularity,
         full_weights = train$outlier_weight,
-        prediction_safety = 0.5
+        prediction_safety = 0.02
     ),
     control = rpart::rpart.control(
         minbucket = 50,
@@ -156,11 +158,12 @@ models |>
         .groups = "drop"
     ) |> 
     distinct(model, MAPE, .keep_all = TRUE) |> 
+    mutate(improvement = MAPE[model == "number_4"] - MAPE) |> 
     arrange(MAPE) |> 
     print()
 
 
-# Custom Tree Capped at 5 gives consistently good results, 
+# Custom Tree Capped at 6 gives consistently good results, 
 # although ANOVA Capped at 4 beats it sometimes
 
 # Train using the full dataset
@@ -174,7 +177,7 @@ tree_custom_full <- rpart::rpart(
         n_splits_continuous = 3,
         full_response = songs$song_popularity,
         full_weights = songs$outlier_weight,
-        prediction_safety = 0.5
+        prediction_safety = 0.02
     ),
     control = rpart::rpart.control(
         minbucket = 50,
@@ -187,7 +190,7 @@ songs_test <- readRDS("data/songs_test_imputed.RDS")
 final_prediction <- tibble(
     id = songs_test$ID,
     song_popularity = predict(tree_custom_full, songs_test) |> 
-        pmin(5) |> 
+        pmin(6) |> 
         round()
 )
 
