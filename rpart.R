@@ -45,8 +45,7 @@ mape_method <- list(
         if (continuous) {
             # Continuous x
             n <- length(y)
-            loss_l <- rep(Inf, n - 1)
-            loss_r <- rep(Inf, n - 1)
+            goodness <- rep(0, n - 1)
             
             p_splits <- ppoints(parms$n_splits_continuous, a = 0)
             i_splits <- round(n * p_splits)
@@ -55,46 +54,39 @@ mape_method <- list(
                 l <- 1:i
                 r <- (i + 1):n
                 
-                loss_l[i] <- minimize_weighted_mape(
-                    draws = y[l], weights = wt[l], objective_value = TRUE
-                )
-                loss_r[i] <- minimize_weighted_mape(
-                    draws = y[r], weights = wt[r], objective_value = TRUE
-                )
+                predicted <- numeric(n)
+                predicted[l] <- minimize_weighted_mape(draws = y[l], weights = wt[l])
+                predicted[r] <- minimize_weighted_mape(draws = y[r], weights = wt[r])
+
+                loss <- weighted_mape(actual = y, predicted = predicted, weights = wt)
+                goodness[i] <- 1/loss
             }
             
-            list(
-                goodness = (1/loss_l)^2 + (1/loss_r)^2, 
-                direction = rep(-1, n-1)
-            )
+            list(goodness = goodness, direction = rep(-1, n - 1))
             
         } else {
             # Categorical x
-            ux <- sort(unique(x))
-            k <- length(ux)
-            
             medians <- tapply(y, x, median)
             ord <- order(medians)
-
-            loss_l <- integer(k - 1)
-            loss_r <- integer(k - 1)
+            ux <- sort(unique(x))
+            
+            n <- length(y)
+            k <- length(ux)
+            goodness <- rep(0, k - 1)
             
             for (i in seq_len(k - 1)) {
                 l <- x %in% ux[ord][1:i]
                 r <- !l
-
-                loss_l[i] <- minimize_weighted_mape(
-                    draws = y[l], weights = wt[l], objective_value = TRUE
-                )
-                loss_r[i] <- minimize_weighted_mape(
-                    draws = y[r], weights = wt[r], objective_value = TRUE
-                )
+                
+                predicted <- numeric(n)
+                predicted[l] <- minimize_weighted_mape(draws = y[l], weights = wt[l])
+                predicted[r] <- minimize_weighted_mape(draws = y[r], weights = wt[r])
+                
+                loss <- weighted_mape(actual = y, predicted = predicted, weights = wt)
+                goodness[i] <- 1/loss
             }
             
-            list(
-                goodness = (1/loss_l)^2 + (1/loss_r)^2, 
-                direction = ux[ord]
-            )
+            list(goodness = goodness, direction = ux[ord])
         }
     },
     eval = function(y, wt, parms) {
