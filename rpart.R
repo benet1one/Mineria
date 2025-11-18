@@ -23,7 +23,7 @@ tree_anova <- rpart::rpart(
     control = rpart::rpart.control(
         minbucket = 20,
         maxdepth = 8,
-        cp = -1
+        cp = 0.003
     )
 )
 
@@ -162,6 +162,26 @@ models |>
     arrange(MAPE) |> 
     print()
 
+
+uncapped <- predict(tree_custom, test)
+test$k_fold <- sample.int(5, size = nrow(test), replace = TRUE)
+
+mape_capped <- function(cap) {
+    test %>% 
+        mutate(pred = pmin(uncapped, cap)) %>% 
+        group_by(k_fold) %>% 
+        summarise(mape = mape(song_popularity, predicted = pred)) %>% 
+        summarise(median_mape = median(mape)) |>
+        _$median_mape
+}
+
+optimisation <- optimise(
+    f = mape_capped,
+    interval = c(0, 100)
+)
+
+optimal_cap <- round(optimisation$minimum)
+cat("\nOptimal Cap =", optimal_cap)
 
 # Custom Tree Capped at 6 gives consistently good results, 
 # although ANOVA Capped at 4 beats it sometimes
