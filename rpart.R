@@ -116,8 +116,8 @@ tree_custom <- rpart::rpart(
         prediction_safety = 0.02
     ),
     control = rpart::rpart.control(
-        minbucket = 50,
-        maxdepth = 8,
+        minbucket = 80,
+        maxdepth = 6,
         cp = -1
     )
 )
@@ -200,11 +200,13 @@ tree_custom_full <- rpart::rpart(
         prediction_safety = 0.02
     ),
     control = rpart::rpart.control(
-        minbucket = 50,
-        maxdepth = 8,
+        minbucket = 80,
+        maxdepth = 6,
         cp = -1
     )
 )
+
+tree_custom_full
 
 songs_test <- readRDS("data/songs_test_imputed.RDS")
 final_prediction <- tibble(
