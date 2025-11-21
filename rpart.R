@@ -110,7 +110,7 @@ tree_custom <- rpart::rpart(
     method = mape_method,
     weights = train$outlier_weight,
     parms = list(
-        n_splits_continuous = 3,
+        n_splits_continuous = 5,
         full_response = train$song_popularity,
         full_weights = train$outlier_weight,
         prediction_safety = 0.02
@@ -194,7 +194,7 @@ tree_custom_full <- rpart::rpart(
     weights = songs$outlier_weight,
     # Increase n_splits for continuous variables
     parms = list(
-        n_splits_continuous = 3,
+        n_splits_continuous = 10,
         full_response = songs$song_popularity,
         full_weights = songs$outlier_weight,
         prediction_safety = 0.02

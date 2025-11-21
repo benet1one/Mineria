@@ -16,12 +16,14 @@ minimize_weighted_mape <- function(draws, weights = rep(1, length(draws)), objec
         f = function(predicted) 
             weighted_mape(actual = draws, predicted = predicted, weights = weights),
         interval = c(0, 100),
-        tol = 0.005
+        tol = 0.04
     )
     
+    solution <- round(opt$minimum)
+    
     if (objective_value) {
-        opt$objective
+        weighted_mape(actual = draws, predicted = solution, weights = weights)
     } else {
-        opt$minimum
+        solution
     }
 }
