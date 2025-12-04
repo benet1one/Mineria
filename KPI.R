@@ -27,3 +27,10 @@ minimize_weighted_mape <- function(draws, weights = rep(1, length(draws)), objec
         solution
     }
 }
+
+rmse <- function(actual, predicted, weights = rep(1, length(actual))) {
+    sqrt(weighted.mean(
+        (actual - predicted)^2,
+        w = weights
+    ))
+}
