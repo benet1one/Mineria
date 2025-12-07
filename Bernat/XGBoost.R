@@ -55,11 +55,13 @@ tuned_fit <- caret::train(
     verbose = 1,
     trControl = caret::trainControl(
         method = "cv",
-        number = 5
+        number = 15,
+        returnResamp = "all"
     ),
     tuneGrid = expand.grid(
         eta = 2^seq(-4, +1),
         max_depth = 2:6,
+        colsample_bytree = c(0.6, 0.8, 1.0),
         
         # Max depth controls depth, no need for huge gamma.
         gamma = 500,
@@ -68,13 +70,34 @@ tuned_fit <- caret::train(
         nrounds = 12,
 
         # Default xgboost parameters
-        colsample_bytree = 1,
         min_child_weight = 1,
         subsample = 1
     )
 )
 
 print(tuned_fit)
+hyper <- names(tuned_fit$bestTune)
+metrics <- tuned_fit$resample |> 
+    as_tibble() |> 
+    group_by(pick(all_of(hyper))) |> 
+    summarise(
+        mean_rmse = mean(RMSE),
+        sd_rmse = sd(RMSE),
+        max_rmse = max(RMSE),
+        top80_rmse = quantile(RMSE, 0.80),
+        .groups = "drop"
+    )
+
+# Min Max(RMSE)
+metrics |> arrange(max_rmse) |> head(3)
+
+# Min Expected(RMSE)
+metrics |> arrange(mean_rmse) |> head(3)
+
+# Midpoint between the above
+metrics |> arrange(top80_rmse) |> head(3)
+
+# We finally chose to keep the model with the least Expected(RMSE).
 best_tune <- tuned_fit$bestTune
 best_fit <- tuned_fit$finalModel
 
@@ -91,7 +114,7 @@ ggplot(rmse_mat, aes(x = depth, y = rmse, color = tuned)) +
     geom_line() +
     geom_point() +
     scale_color_viridis_d(end = 0.7) +
-    xlim(0, 12) +
+    scale_x_continuous(breaks = 2:12, minor_breaks = NULL, limits = c(2, 12)) +
     theme_minimal()
 
 
@@ -104,7 +127,7 @@ full_fit <- xgboost::xgboost(
     data = full_train,
     label = songs$song_popularity,
     weight = songs$outlier_weight,
-    nrounds = 20,
+    nrounds = 6,
     verbose = 1,
     params = as.list(best_tune)
 )
