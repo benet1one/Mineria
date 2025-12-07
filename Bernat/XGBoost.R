@@ -90,6 +90,8 @@ rmse_mat <- bind_rows(rmse_mat, tuned_rmse_mat)
 ggplot(rmse_mat, aes(x = depth, y = rmse, color = tuned)) +
     geom_line() +
     geom_point() +
+    scale_color_viridis_d(end = 0.7) +
+    xlim(0, 12) +
     theme_minimal()
 
 
