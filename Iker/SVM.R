@@ -14,8 +14,6 @@ train <- songs |> slice_sample(prop = 0.7)
 test  <- songs |> filter(!is.element(ID, train$ID))
 
 # 2. SELECCIÓN DE PREDICTORES Y NORMALIZACIÓN
-
-# Fórmula coherente con la del XGBoost
 formula <- (
   song_popularity ~ 
     liveness + loudness + danceability + song_duration_ms + tempo +
@@ -24,15 +22,30 @@ formula <- (
 )
 
 # Normalización min-max (SVM lo necesita)
-normalizer <- preProcess(train, method = c("range"))
-train_norm <- predict(normalizer, train)
-test_norm  <- predict(normalizer, test)
+
+predictoras <- c(
+  "liveness", "loudness", "danceability", "song_duration_ms",
+  "tempo", "time_signature", "audio_valence", "energy",
+  "acousticness", "instrumentalness", "speechiness"
+)
+
+normalizer <- preProcess(train[, predictoras], method = c("range"))
+
+train_norm <- predict(normalizer, train[, predictoras])
+test_norm  <- predict(normalizer, test[, predictoras])
+songs_norm <- predict(normalizer, songs[, predictoras])
+test_kaggle <- predict(normalizer, songs_test[, predictoras])
+
+train_norm$song_popularity <- train$song_popularity
+train_norm$outlier_weight   <- train$outlier_weight
+
+train_clean <- train_norm %>% filter(train$outlier_weight == 1)
 
 # 3. ENTRENAMIENTO SVM BASE (sin tuning)
 
 svm_base <- svm(
   formula,
-  data  = train_norm,
+  data  = train_clean,
   kernel = "radial",
   cost   = 1,
   gamma  = 0.1
@@ -50,7 +63,7 @@ mape_test_base  <- mape(test$song_popularity,  pred_test_base)
 
 print("Resultados modelo base:")
 print(c(rmse_train_base, rmse_test_base, mape_train_base, mape_test_base))
-# Resuktados esperables cuando no hay tuning.
+# Resultados esperables cuando no hay tuning.
 
 # 4. TUNING CON VALIDACIÓN CRUZADA
 
@@ -62,7 +75,7 @@ grid_gamma <- c(0.01, 0.05, 0.1)
 svm_tuned <- tune(
   svm,
   formula,
-  data = train_norm,
+  data = train_clean,
   kernel = "radial",
   ranges = list(
     cost  = grid_cost,
@@ -131,8 +144,8 @@ svm_submission <- svm(
   formula,
   data   = songs_norm,
   kernel = "radial",
-  cost   = best_parameters$cost,
-  gamma  = best_parameters$gamma
+  cost   = best_svm$cost,
+  gamma  = best_svm$gamma
 )
 
 # Predicción sobre test Kaggle
