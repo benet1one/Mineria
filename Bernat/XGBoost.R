@@ -2,11 +2,13 @@
 library(dplyr)
 library(ggplot2)
 source("KPI.R")
-songs <- readRDS("data/songs_outlied.RDS")
+
+songs <- readRDS("data/songs_outlied.RDS") |> 
+    filter(outlier_weight > 0.9)
 
 set.seed(124)
-train <- songs |> slice_sample(prop = 0.7)
-test <- songs |> filter(!is.element(ID, train$ID))
+test <- songs |> slice_sample(prop = 0.3)
+train <- songs |> filter(!is.element(ID, test$ID))
 
 formula <- (
     song_popularity ~ 0
@@ -127,17 +129,19 @@ full_fit <- xgboost::xgboost(
     data = full_train,
     label = songs$song_popularity,
     weight = songs$outlier_weight,
-    nrounds = 6,
+    nrounds = 12,
     verbose = 1,
     params = as.list(best_tune)
 )
 
 full_prediction <- tibble(
     id = songs_test$ID,
-    song_popularity = predict(full_fit, full_test) |> round()
+    song_popularity = predict(full_fit, full_test) |> round(4)
 )
 
 write.csv(
     full_prediction, file = "predictions/xgboost.csv",
     row.names = FALSE
 )
+
+hist(full_prediction$song_popularity)
