@@ -102,4 +102,4 @@ cat("\n========================\n")
 
 cat("Avg RMSE GLM:", mean(rmse_glm), "\n")
 cat("Avg RMSE Baseline:", mean(rmse_baseline), "\n")
-cat("Improvement:", mean(rmse_baseline) - mean(rmse_glm), "\n"
+cat("Improvement:", mean(rmse_baseline) - mean(rmse_glm), "\n")
