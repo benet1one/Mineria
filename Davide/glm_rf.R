@@ -13,7 +13,7 @@ set.seed(123)
 # =============================
 # Load data
 # =============================
-songs <- readRDS("data/songs_all_imputed.RDS")
+songs <- readRDS("data/songs_outlied.RDS")
 
 songs <- songs |>
   select(

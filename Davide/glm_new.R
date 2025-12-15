@@ -10,12 +10,11 @@ rmse <- function(actual, predicted) {
 # =============================
 # Load data
 # =============================
-songs <- readRDS("data/songs_all_imputed.RDS")
+songs <- readRDS("data/songs_outlied.RDS")
 
 songs <- songs |>
   select(
     ID,
-    training,
     liveness, danceability, audio_valence,
     energy, acousticness, speechiness,
     song_popularity
