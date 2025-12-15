@@ -1,20 +1,25 @@
 library(ranger)
 library(caret)
-
+library(dplyr)
 
 # Random Forest Model
 
 set.seed(123)
+songs <- readRDS("data/songs_outlied.RDS")
+songs_test <- readRDS("data/songs_test_imputed.RDS") |> 
+    mutate(song_popularity = NA)
+    
+songs_all <- bind_rows(songs, songs_test) |> 
+    mutate(
+        # Reduce skew
+        song_duration_ms = log1p(song_duration_ms),
+        tempo = log1p(tempo)
+    )
 
-train <- songs |> slice_sample(prop = 0.7)
-test <- songs |> filter(!is.element(ID, train$ID))
+songs_train <- songs_all |> 
+    filter(!is.na(song_popularity)) |> 
+    filter(outlier_weight == 1)
 
-songs <- songs %>%
-         mutate(
-             # Reduce skew
-            song_duration_ms = log1p(song_duration_ms),
-            tempo = log1p(tempo))
-            
 formula <- (
     song_popularity ~ 0
     + liveness + loudness + danceability + song_duration_ms + tempo
@@ -22,11 +27,10 @@ formula <- (
     + acousticness + instrumentalness + speechiness
 )
 
-
 rf_model <- ranger(
     formula = formula,
-    data = train,
-    num.trees = 1500,         #
+    data = songs_train,
+    num.trees = 1500,
     mtry = 3,                
     min.node.size = 3,  
     splitrule = "variance",
@@ -35,6 +39,23 @@ rf_model <- ranger(
     importance = "permutation",
     respect.unordered.factors = "order",
 )
+
+# Variable importance
+vi <- rf_model$variable.importance
+barplot(sort(vi, TRUE), las=2, col="darkgreen",
+        main="Random Forest Variable Importance")
+
+
+# Save prediction
+predictions <- tibble(
+    id = songs_test$ID,
+    song_popularity = predict(rf_model, songs_test) $ predictions |> round(4)
+)
+
+write.csv(predictions, file = "predictions/rf.csv", row.names = FALSE)
+
+
+## Old Code
 
 # Predictions
 train$rf_pred <- predict(rf_model, train)$predictions
@@ -58,7 +79,3 @@ print(rf_train)
 cat("RANDOM FOREST TEST PERFORMANCE \n")
 print(rf_test)
 
-# Variable importance
-vi <- rf_model$variable.importance
-barplot(sort(vi, TRUE), las=2, col="darkgreen",
-        main="Random Forest Variable Importance")
