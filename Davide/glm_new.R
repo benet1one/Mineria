@@ -102,3 +102,40 @@ cat("\n========================\n")
 cat("Avg RMSE GLM:", mean(rmse_glm), "\n")
 cat("Avg RMSE Baseline:", mean(rmse_baseline), "\n")
 cat("Improvement:", mean(rmse_baseline) - mean(rmse_glm), "\n")
+
+
+library(ggplot2)
+library(dplyr)
+library(tibble)
+
+# =============================
+rmse_plot <- tibble(
+  Model = c("GLM base", "GLM + FE + log(target)"),
+  RMSE = c(
+    mean(rmse_glm),   # (cross-validation)
+    rmse_score        # (train/test + log-target)
+  )
+)
+
+# =============================
+# Plot
+# =============================
+ggplot(rmse_plot, aes(x = Model, y = RMSE, fill = Model)) +
+  geom_col(width = 0.6) +
+  geom_text(
+    aes(label = round(RMSE, 2)),
+    vjust = -0.6,
+    size = 4
+  ) +
+  scale_fill_manual(values = c(
+    "GLM base" = "steelblue",
+    "FE + log(target)" = "darkorange"
+  )) +
+  labs(
+    title = "Comparison RMSE – GLM",
+    subtitle = "Original vs Feature Eng.",
+    y = "RMSE",
+    x = ""
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none")

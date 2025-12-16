@@ -6,7 +6,6 @@ library(dplyr)
 # =============================
 # Set working directory & load data
 # =============================
-setwd("C:/Users/utente/Documents/GitHub/Mineria")
 songs <- readRDS("data/songs_outlied.RDS")
 
 # =============================
